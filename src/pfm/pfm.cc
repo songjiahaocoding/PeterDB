@@ -1,17 +1,21 @@
 #include "src/include/pfm.h"
 
 namespace PeterDB {
+    // Meyers' Singleton
     PagedFileManager &PagedFileManager::instance() {
         static PagedFileManager _pf_manager = PagedFileManager();
         return _pf_manager;
     }
 
+    // default: Generated constructor which will do nothing
     PagedFileManager::PagedFileManager() = default;
 
+    // destructor: will be invoked when the object is deleted
     PagedFileManager::~PagedFileManager() = default;
 
     PagedFileManager::PagedFileManager(const PagedFileManager &) = default;
 
+    // operator overloading: Prevent assignment
     PagedFileManager &PagedFileManager::operator=(const PagedFileManager &) = default;
 
     RC PagedFileManager::createFile(const std::string &fileName) {
@@ -38,6 +42,7 @@ namespace PeterDB {
 
     FileHandle::~FileHandle() = default;
 
+    // void pointer(void *data) which can be assigned to the point of any type
     RC FileHandle::readPage(PageNum pageNum, void *data) {
         return -1;
     }
