@@ -1,3 +1,5 @@
+#include <fstream>
+#include <iostream>
 #include "src/include/pfm.h"
 
 namespace PeterDB {
@@ -19,19 +21,49 @@ namespace PeterDB {
     PagedFileManager &PagedFileManager::operator=(const PagedFileManager &) = default;
 
     RC PagedFileManager::createFile(const std::string &fileName) {
+        std::ifstream file(fileName);
+        if(!file){
+            std::ofstream f(fileName);
+            if(f){
+                f.close();
+                return 0;
+            } else {
+                std::cout << "Error when creating the file" << std::endl;
+                return -1;
+            }
+        }
+        file.close();
         return -1;
     }
 
     RC PagedFileManager::destroyFile(const std::string &fileName) {
-        return -1;
+        std::ifstream file(fileName);
+        if(!file){
+            std::cout << "The file "<< fileName << " does not exist"<< std::endl;
+            return -1;
+        } else {
+            if(remove(fileName.c_str())!=0){
+                std::cout << "The deletion failed: " << fileName << std::endl;
+            }
+        }
+        return 0;
     }
 
     RC PagedFileManager::openFile(const std::string &fileName, FileHandle &fileHandle) {
-        return -1;
+        // Error: it is already a handle for some open file
+        if(fileHandle.handlingFile())return -1;
+        std::ifstream file(fileName);
+        if(!file) {
+            std::cout << "The file "<< fileName << " does not exist"<< std::endl;
+            return -1;
+        }
+        return fileHandle.openFile(fileName);
     }
 
     RC PagedFileManager::closeFile(FileHandle &fileHandle) {
-        return -1;
+        // Error: The handler is not handling any file
+        if(!fileHandle.handlingFile())return -1;
+        return fileHandle.closeFile();
     }
 
     FileHandle::FileHandle() {
@@ -60,6 +92,27 @@ namespace PeterDB {
     }
 
     RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
+        return -1;
+    }
+
+    RC FileHandle::openFile(const std::string& fileName) {
+        file.open(fileName, std::ios::in | std::ios::out | std::ios::binary);
+        if(!handlingFile()){
+            std::cout << "Error cannot open the file " << fileName << std::endl;
+            return -1;
+        }
+        return 0;
+    }
+
+    RC FileHandle::closeFile(){
+        file.close();
+        return 0;
+    }
+
+    RC FileHandle::handlingFile() {
+        if(file.is_open()){
+            return 0;
+        }
         return -1;
     }
 

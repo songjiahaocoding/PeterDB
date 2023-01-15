@@ -4,6 +4,7 @@
 #define PAGE_SIZE 4096
 
 #include <string>
+#include <fstream>
 
 namespace PeterDB {
 
@@ -47,6 +48,13 @@ namespace PeterDB {
         unsigned getNumberOfPages();                                        // Get the number of pages in the file
         RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount,
                                 unsigned &appendPageCount);                 // Put current counter values into variables
+        RC openFile(const std::string &fileName);
+        RC handlingFile();
+
+        RC closeFile();
+
+    private:
+        std::fstream file;
     };
 
 } // namespace PeterDB
