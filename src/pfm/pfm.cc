@@ -78,7 +78,6 @@ namespace PeterDB {
 
     // void pointer(void *data) which can be assigned to the point of any type
     RC FileHandle::readPage(PageNum pageNum, void *data) {
-        if (pageNum==0)return -1;
         if(pageNum < infoPage->info[ACTIVE_PAGE_NUM]) {
             // Offset the information page
             fseek(file, (pageNum+1)*PAGE_SIZE, SEEK_SET);
@@ -90,7 +89,6 @@ namespace PeterDB {
     }
 
     RC FileHandle::writePage(PageNum pageNum, const void *data) {
-        if(pageNum==0)return -1;
         if(pageNum < infoPage->info[ACTIVE_PAGE_NUM]){
             fseek(file, (pageNum+1)*PAGE_SIZE, SEEK_SET);
             fwrite(data, PAGE_SIZE, 1, file);
@@ -113,7 +111,7 @@ namespace PeterDB {
     }
 
     RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
-        infoPage->readInfoPage(file);
+        infoPage->flushInfoPage(file);
         readPageCount = infoPage->info[READ_NUM];
         writePageCount = infoPage->info[WRITE_NUM];
         appendPageCount = infoPage->info[APPEND_NUM];
@@ -121,7 +119,10 @@ namespace PeterDB {
     }
 
     RC FileHandle::openFile(const std::string& fileName) {
-        if(handlingFile())return -1;
+        if(handlingFile()){
+            std::cout << "This FileHandle is handling another file." << std::endl;
+            return -1;
+        }
         file = fopen(fileName.c_str(), "r+");
         if(!handlingFile()){
             std::cout << "Error cannot open the file " << fileName << std::endl;
@@ -136,6 +137,7 @@ namespace PeterDB {
     RC FileHandle::closeFile(){
         infoPage->flushInfoPage(file);
         fclose(file);
+        file = nullptr;
         return 0;
     }
 
@@ -167,7 +169,7 @@ namespace PeterDB {
 
     void infoPage::flushInfoPage(FILE *file) {
         fseek(file, 0, SEEK_SET);
-        fwrite(reinterpret_cast<const void *>(info), PAGE_SIZE, 1, file);
+        fwrite(info, PAGE_SIZE, 1, file);
     }
 
     infoPage::~infoPage() = default;
