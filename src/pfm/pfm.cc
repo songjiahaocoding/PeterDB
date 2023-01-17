@@ -25,6 +25,8 @@ namespace PeterDB {
             std::ofstream f(fileName);
             if(f){
                 f.close();
+                infoPage infoPage;
+                infoPage.flushInfoPage((FILE &)file);
                 return 0;
             } else {
                 std::cout << "Error when creating the file" << std::endl;
@@ -102,7 +104,11 @@ namespace PeterDB {
     }
 
     RC FileHandle::appendPage(const void *data) {
-        return -1;
+        fseek(file, 0, SEEK_END);
+        fwrite(data, PAGE_SIZE, 1, file);
+        infoPage->info[ACTIVE_PAGE_NUM]++;
+        infoPage->info[APPEND_NUM]++;
+        return 0;
     }
 
     unsigned FileHandle::getNumberOfPages() {
@@ -119,12 +125,16 @@ namespace PeterDB {
         if(!handlingFile()){
             std::cout << "Error cannot open the file " << fileName << std::endl;
             return -1;
+        } else {
+            infoPage = new class infoPage();
+            infoPage->readInfoPage(*file);
         }
         return 0;
     }
 
     RC FileHandle::closeFile(){
         fclose(file);
+        infoPage->flushInfoPage(*file);
         return 0;
     }
 
@@ -135,5 +145,30 @@ namespace PeterDB {
         return -1;
     }
 
+    infoPage::infoPage() {
+        info[READ_NUM]  = 0;
+        info[WRITE_NUM] = 0;
+        info[APPEND_NUM] = 0;
+        info[ACTIVE_PAGE_NUM] = 0;
+    }
 
+    void infoPage::readInfoPage(FILE &file) {
+        fseek(&file, 0, SEEK_SET);
+        void* data = nullptr;
+        fread(data, PAGE_SIZE, 1, &file);
+        auto* value = (unsigned*)data;
+        info[READ_NUM] = value[READ_NUM];
+        info[WRITE_NUM] = value[WRITE_NUM];
+        info[APPEND_NUM] = value[APPEND_NUM];
+        info[ACTIVE_PAGE_NUM] = value[ACTIVE_PAGE_NUM];
+        delete value;
+    }
+
+    void infoPage::flushInfoPage(FILE &file) {
+        fseek(&file, 0, SEEK_SET);
+        fwrite(reinterpret_cast<const void *>(info), PAGE_SIZE, 1, &file);
+    }
+
+    infoPage::~infoPage() = default;
 } // namespace PeterDB
+

@@ -38,7 +38,6 @@ namespace PeterDB {
         READ_NUM,
         WRITE_NUM,
         APPEND_NUM,
-        PAGE_NUM,
         ACTIVE_PAGE_NUM,
     };
 
@@ -48,6 +47,9 @@ namespace PeterDB {
 
         infoPage();
         ~infoPage();
+
+        void readInfoPage(std::FILE&);
+        void flushInfoPage(std::FILE&);
     };
 
     class FileHandle {
