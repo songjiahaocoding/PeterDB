@@ -112,11 +112,15 @@ namespace PeterDB {
     }
 
     unsigned FileHandle::getNumberOfPages() {
-        return -1;
+        return infoPage->info[ACTIVE_PAGE_NUM];
     }
 
     RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
-        return -1;
+        infoPage->readInfoPage(*file);
+        readPageCount = infoPage->info[READ_NUM];
+        writePageCount = infoPage->info[WRITE_NUM];
+        appendPageCount = infoPage->info[APPEND_NUM];
+        return 0;
     }
 
     RC FileHandle::openFile(const std::string& fileName) {
