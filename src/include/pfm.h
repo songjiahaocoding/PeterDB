@@ -6,6 +6,8 @@
 #include <string>
 #include <fstream>
 
+#define INFO_NUM 4
+
 namespace PeterDB {
 
     typedef unsigned PageNum;
@@ -32,6 +34,22 @@ namespace PeterDB {
 
     };
 
+    enum infoID {
+        READ_NUM,
+        WRITE_NUM,
+        APPEND_NUM,
+        PAGE_NUM,
+        ACTIVE_PAGE_NUM,
+    };
+
+    class infoPage {
+    public:
+        unsigned info[INFO_NUM];
+
+        infoPage();
+        ~infoPage();
+    };
+
     class FileHandle {
     public:
         // variables to keep the counter for each operation
@@ -41,6 +59,7 @@ namespace PeterDB {
 
         FileHandle();                                                       // Default constructor
         ~FileHandle();                                                      // Destructor
+        FileHandle &operator=(const FileHandle &);
 
         RC readPage(PageNum pageNum, void *data);                           // Get a specific page
         RC writePage(PageNum pageNum, const void *data);                    // Write a specific page
@@ -54,9 +73,9 @@ namespace PeterDB {
         RC closeFile();
 
     private:
-        std::fstream file;
+        FILE *file;
+        PeterDB::infoPage *infoPage;
     };
-
 } // namespace PeterDB
 
 #endif // _pfm_h_

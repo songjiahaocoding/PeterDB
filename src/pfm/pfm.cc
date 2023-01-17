@@ -1,4 +1,3 @@
-#include <fstream>
 #include <iostream>
 #include "src/include/pfm.h"
 
@@ -74,12 +73,31 @@ namespace PeterDB {
 
     FileHandle::~FileHandle() = default;
 
+    FileHandle &FileHandle::operator=(const FileHandle &) {
+        return *this;
+    }
+
     // void pointer(void *data) which can be assigned to the point of any type
     RC FileHandle::readPage(PageNum pageNum, void *data) {
+        if (pageNum==0)return -1;
+        if(pageNum < infoPage->info[ACTIVE_PAGE_NUM]) {
+            // Offset the information page
+            fseek(file, (pageNum+1)*PAGE_SIZE, SEEK_SET);
+            fread(data, PAGE_SIZE, 1, file);
+            infoPage->info[READ_NUM]++;
+            return 0;
+        }
         return -1;
     }
 
     RC FileHandle::writePage(PageNum pageNum, const void *data) {
+        if(pageNum==0)return -1;
+        if(pageNum < infoPage->info[ACTIVE_PAGE_NUM]){
+            fseek(file, (pageNum+1)*PAGE_SIZE, SEEK_SET);
+            fwrite(data, PAGE_SIZE, 1, file);
+            infoPage->info[WRITE_NUM]++;
+            return 0;
+        }
         return -1;
     }
 
@@ -96,7 +114,8 @@ namespace PeterDB {
     }
 
     RC FileHandle::openFile(const std::string& fileName) {
-        file.open(fileName, std::ios::in | std::ios::out | std::ios::binary);
+        file = fopen(fileName.c_str(), "r+");
+        std::cout << "The status of the file " << handlingFile() << std::endl;
         if(!handlingFile()){
             std::cout << "Error cannot open the file " << fileName << std::endl;
             return -1;
@@ -105,15 +124,16 @@ namespace PeterDB {
     }
 
     RC FileHandle::closeFile(){
-        file.close();
+        fclose(file);
         return 0;
     }
 
     RC FileHandle::handlingFile() {
-        if(file.is_open()){
+        if(file){
             return 0;
         }
         return -1;
     }
+
 
 } // namespace PeterDB
