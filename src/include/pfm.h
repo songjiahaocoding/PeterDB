@@ -48,8 +48,8 @@ namespace PeterDB {
         infoPage();
         ~infoPage();
 
-        void readInfoPage(std::FILE&);
-        void flushInfoPage(std::FILE&);
+        void readInfoPage(std::FILE*);
+        void flushInfoPage(std::FILE*);
     };
 
     class FileHandle {
@@ -70,7 +70,7 @@ namespace PeterDB {
         RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount,
                                 unsigned &appendPageCount);                 // Put current counter values into variables
         RC openFile(const std::string &fileName);
-        RC handlingFile();
+        bool handlingFile();
 
         RC closeFile();
 

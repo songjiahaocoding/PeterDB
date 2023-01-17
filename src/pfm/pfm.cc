@@ -20,20 +20,22 @@ namespace PeterDB {
     PagedFileManager &PagedFileManager::operator=(const PagedFileManager &) = default;
 
     RC PagedFileManager::createFile(const std::string &fileName) {
-        std::ifstream file(fileName);
+        FILE* file = fopen(fileName.c_str(), "r");
         if(!file){
-            std::ofstream f(fileName);
-            if(f){
-                f.close();
+            file = fopen(fileName.c_str(), "wb");
+            if(file){
+                //std::cout << "Create " << fileName << std::endl;
                 infoPage infoPage;
-                infoPage.flushInfoPage((FILE &)file);
+                infoPage.flushInfoPage(file);
+                fclose(file);
                 return 0;
             } else {
                 std::cout << "Error when creating the file" << std::endl;
+                fclose(file);
                 return -1;
             }
         }
-        file.close();
+        fclose(file);
         return -1;
     }
 
@@ -47,17 +49,11 @@ namespace PeterDB {
                 std::cout << "The deletion failed: " << fileName << std::endl;
             }
         }
+        file.close();
         return 0;
     }
 
     RC PagedFileManager::openFile(const std::string &fileName, FileHandle &fileHandle) {
-        // Error: it is already a handle for some open file
-        if(fileHandle.handlingFile())return -1;
-        std::ifstream file(fileName);
-        if(!file) {
-            std::cout << "The file "<< fileName << " does not exist"<< std::endl;
-            return -1;
-        }
         return fileHandle.openFile(fileName);
     }
 
@@ -71,6 +67,7 @@ namespace PeterDB {
         readPageCounter = 0;
         writePageCounter = 0;
         appendPageCounter = 0;
+        file = nullptr;
     }
 
     FileHandle::~FileHandle() = default;
@@ -116,7 +113,7 @@ namespace PeterDB {
     }
 
     RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
-        infoPage->readInfoPage(*file);
+        infoPage->readInfoPage(file);
         readPageCount = infoPage->info[READ_NUM];
         writePageCount = infoPage->info[WRITE_NUM];
         appendPageCount = infoPage->info[APPEND_NUM];
@@ -124,29 +121,29 @@ namespace PeterDB {
     }
 
     RC FileHandle::openFile(const std::string& fileName) {
+        if(handlingFile())return -1;
         file = fopen(fileName.c_str(), "r+");
-        std::cout << "The status of the file " << handlingFile() << std::endl;
         if(!handlingFile()){
             std::cout << "Error cannot open the file " << fileName << std::endl;
             return -1;
         } else {
             infoPage = new class infoPage();
-            infoPage->readInfoPage(*file);
+            infoPage -> readInfoPage(file);
         }
         return 0;
     }
 
     RC FileHandle::closeFile(){
+        infoPage->flushInfoPage(file);
         fclose(file);
-        infoPage->flushInfoPage(*file);
         return 0;
     }
 
-    RC FileHandle::handlingFile() {
-        if(file){
-            return 0;
+    bool FileHandle::handlingFile() {
+        if(file != nullptr){
+            return true;
         }
-        return -1;
+        return false;
     }
 
     infoPage::infoPage() {
@@ -156,10 +153,10 @@ namespace PeterDB {
         info[ACTIVE_PAGE_NUM] = 0;
     }
 
-    void infoPage::readInfoPage(FILE &file) {
-        fseek(&file, 0, SEEK_SET);
-        void* data = nullptr;
-        fread(data, PAGE_SIZE, 1, &file);
+    void infoPage::readInfoPage(FILE *file) {
+        fseek(file, 0, SEEK_SET);
+        char* data = new char [PAGE_SIZE];
+        fread(data, PAGE_SIZE, 1, file);
         auto* value = (unsigned*)data;
         info[READ_NUM] = value[READ_NUM];
         info[WRITE_NUM] = value[WRITE_NUM];
@@ -168,9 +165,9 @@ namespace PeterDB {
         delete value;
     }
 
-    void infoPage::flushInfoPage(FILE &file) {
-        fseek(&file, 0, SEEK_SET);
-        fwrite(reinterpret_cast<const void *>(info), PAGE_SIZE, 1, &file);
+    void infoPage::flushInfoPage(FILE *file) {
+        fseek(file, 0, SEEK_SET);
+        fwrite(reinterpret_cast<const void *>(info), PAGE_SIZE, 1, file);
     }
 
     infoPage::~infoPage() = default;
