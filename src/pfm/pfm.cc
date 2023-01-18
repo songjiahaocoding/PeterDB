@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include "src/include/pfm.h"
 
 namespace PeterDB {
@@ -175,6 +176,8 @@ namespace PeterDB {
 
     infoPage::~infoPage() = default;
 
+    #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
+
     Page::Page(const void *data) {
         memcpy(&info, (char*)data + PAGE_SIZE - sizeof info, sizeof info);
 
@@ -182,12 +185,36 @@ namespace PeterDB {
         memcpy(page, data, PAGE_SIZE);
     }
 
+    // Read the indicated record
     void Page::readRecord(FileHandle &fileHandle, int offset, int recordSize, void *data) {
+        char* recordPtr = page + offset;
+        int fieldNum = *(int*)recordPtr;
+        char* flagPtr = recordPtr + sizeof(short int);
+        short int flag_size = std::ceil( static_cast<double>(fieldNum) /CHAR_BIT);
+        char* dataPtr = flagPtr + flag_size + INDEX_SIZE*fieldNum;
 
+        memcpy(data, flagPtr, flag_size);
+        memcpy((char*)data+flag_size, dataPtr, recordSize-flag_size-INDEX_SIZE*fieldNum-sizeof (short int));
     }
 
+    // Write record to given place
     void Page::writeRecord(const Record &record, FileHandle &fileHandle, unsigned int availablePage, RID &rid) {
-
+        // Assign the new RID
+        rid = {availablePage, info[SLOT_NUM]};
+        // Write the record to page
+        memcpy(page+info[DATA_OFFSET], record.getRecord(), record.size);
+        // Write a new slot information
+        std::pair<short int ,short int> newSlot;
+        newSlot = {info[DATA_OFFSET], record.size};
+        memcpy((char*)page + PAGE_SIZE - info[INFO_OFFSET] - SLOT_SIZE, &newSlot, SLOT_SIZE);
+        // Update information
+        info[DATA_OFFSET] += record.size;
+        info[INFO_OFFSET] += SLOT_SIZE;
+        info[SLOT_NUM]++;
+        // Write back
+        memcpy((char*)page + PAGE_SIZE - sizeof(unsigned) * INFO_NUM, &info, sizeof(unsigned) * INFO_NUM);
+        // Write to disk
+        fileHandle.writePage(availablePage, page);
     }
 
     Page::~Page() = default;

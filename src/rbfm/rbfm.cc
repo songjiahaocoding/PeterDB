@@ -162,5 +162,9 @@ namespace PeterDB {
         memcpy(data + offset, (char*)value+flag_size, totalSize);
         offset += totalSize;
     }
+
+    const char* Record::getRecord() const {
+        return data;
+    }
 } // namespace PeterDB
 

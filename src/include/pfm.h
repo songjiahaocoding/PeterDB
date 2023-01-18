@@ -91,7 +91,7 @@ namespace PeterDB {
         Page(const void* data);
         ~Page();
 
-        int info[PAGE_INFO_NUM]{};
+        unsigned short info[PAGE_INFO_NUM]{};
         char* page;
 
         void readRecord(FileHandle& fileHandle, int offset, int recordSize, void* data);

@@ -2,7 +2,6 @@
 #define _rbfm_h_
 
 #include <vector>
-
 #include "pfm.h"
 
 namespace PeterDB {
@@ -150,6 +149,7 @@ namespace PeterDB {
                const void *data, RID &rid);
         ~Record() = default;
         bool isNull(int);
+        const char* getRecord() const;
 
         RID rid;
         short int  fieldNum;
