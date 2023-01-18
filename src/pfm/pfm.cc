@@ -174,5 +174,22 @@ namespace PeterDB {
     }
 
     infoPage::~infoPage() = default;
+
+    Page::Page(const void *data) {
+        memcpy(&info, (char*)data + PAGE_SIZE - sizeof info, sizeof info);
+
+        page = new char [PAGE_SIZE];
+        memcpy(page, data, PAGE_SIZE);
+    }
+
+    void Page::readRecord(FileHandle &fileHandle, int offset, int recordSize, void *data) {
+
+    }
+
+    void Page::writeRecord(const Record &record, FileHandle &fileHandle, unsigned int availablePage, RID &rid) {
+
+    }
+
+    Page::~Page() = default;
 } // namespace PeterDB
 

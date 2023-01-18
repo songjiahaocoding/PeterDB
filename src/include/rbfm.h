@@ -78,6 +78,8 @@ namespace PeterDB {
 
         RC closeFile(FileHandle &fileHandle);                               // Close a record-based file
 
+        RC appendNewPage(FileHandle &fileHandle);
+
         //  Format of the data passed into the function is the following:
         //  [n byte-null-indicators for y fields] [actual value for the first field] [actual value for the second field] ...
         //  1) For y fields, there is n-byte-null-indicators in the beginning of each record.
@@ -141,17 +143,22 @@ namespace PeterDB {
 
     };
 
+    #define INDEX_SIZE 2
     class Record {
     public:
         Record(const std::vector<Attribute> &recordDescriptor,
                const void *data, RID &rid);
         ~Record() = default;
+        bool isNull(int);
 
         RID rid;
-
-
+        short int  fieldNum;
+        short int  size;
+        short int* index;
+        void buildRecord(const std::vector<Attribute> &descriptor, const void* data);
     private:
         char* data;
+        char* flag;
     };
 
 } // namespace PeterDB

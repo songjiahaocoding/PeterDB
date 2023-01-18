@@ -5,6 +5,7 @@
 
 #include <string>
 #include <fstream>
+#include "rbfm.h"
 
 namespace PeterDB {
 
@@ -78,12 +79,23 @@ namespace PeterDB {
         PeterDB::infoPage *infoPage;
     };
 
+    enum pageInfo {
+        INFO_OFFSET,
+        DATA_OFFSET,
+        SLOT_NUM,
+        PAGE_INFO_NUM
+    };
+
     class Page {
     public:
-        Page();
+        Page(const void* data);
         ~Page();
 
+        int info[PAGE_INFO_NUM]{};
+        char* page;
 
+        void readRecord(FileHandle& fileHandle, int offset, int recordSize, void* data);
+        void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
     };
 } // namespace PeterDB
 
