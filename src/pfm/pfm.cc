@@ -107,6 +107,7 @@ namespace PeterDB {
     }
 
     unsigned FileHandle::getNumberOfPages() {
+        infoPage->flushInfoPage(file);
         return infoPage->info[ACTIVE_PAGE_NUM];
     }
 

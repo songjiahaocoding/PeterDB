@@ -141,6 +141,19 @@ namespace PeterDB {
 
     };
 
+    class Record {
+    public:
+        Record(const std::vector<Attribute> &recordDescriptor,
+               const void *data, RID &rid);
+        ~Record() = default;
+
+        RID rid;
+
+
+    private:
+        char* data;
+    };
+
 } // namespace PeterDB
 
 #endif // _rbfm_h_

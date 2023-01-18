@@ -6,8 +6,6 @@
 #include <string>
 #include <fstream>
 
-#define INFO_NUM 4
-
 namespace PeterDB {
 
     typedef unsigned PageNum;
@@ -34,11 +32,12 @@ namespace PeterDB {
 
     };
 
-    enum infoID {
+    enum infoVal {
         READ_NUM,
         WRITE_NUM,
         APPEND_NUM,
         ACTIVE_PAGE_NUM,
+        INFO_NUM
     };
 
     class infoPage {
@@ -77,6 +76,14 @@ namespace PeterDB {
     private:
         FILE *file;
         PeterDB::infoPage *infoPage;
+    };
+
+    class Page {
+    public:
+        Page();
+        ~Page();
+
+
     };
 } // namespace PeterDB
 
