@@ -100,15 +100,11 @@ namespace PeterDB {
     }
 
     RC FileHandle::appendPage(const void *data) {
-        char* val = new char [PAGE_SIZE];
-        memset((void*)val, 0, PAGE_SIZE);
-        memcpy((void*)val, data, PAGE_SIZE);
         fseek(file, 0, SEEK_END);
-        fwrite(val, PAGE_SIZE, 1, file);
+        fwrite(data, PAGE_SIZE, 1, file);
         infoPage->info[ACTIVE_PAGE_NUM]++;
         infoPage->info[APPEND_NUM]++;
         infoPage->flushInfoPage(file);
-        delete [] val;
         return 0;
     }
 
@@ -177,6 +173,7 @@ namespace PeterDB {
         offset+=sizeof (unsigned);
         info[ACTIVE_PAGE_NUM] = *(unsigned *)(data+offset);
         delete value;
+        delete [] data;
     }
 
     void infoPage::flushInfoPage(FILE *file) {

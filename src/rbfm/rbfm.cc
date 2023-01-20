@@ -90,6 +90,7 @@ namespace PeterDB {
     RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                           const RID &rid, void *data) {
         char* pageData = new char [PAGE_SIZE];
+        memset(pageData, 0, PAGE_SIZE);
         if(fileHandle.readPage(rid.pageNum, pageData)==0){
             Page page(pageData);
             auto slot = page.getSlotInfo(rid.slotNum);
@@ -176,6 +177,7 @@ namespace PeterDB {
     unsigned int RecordBasedFileManager::getNextAvailablePageNum(short int insertSize, FileHandle &handle, unsigned int startingNum) {
         for (int i = 0; i < handle.getNumberOfPages(); ++i) {
             char* pageData = new char [PAGE_SIZE];
+            memset(pageData, 0, PAGE_SIZE);
             handle.readPage((startingNum + i) % handle.getNumberOfPages(), pageData);
             Page page(pageData);
             if(insertSize<page.getFreeSpace()){
