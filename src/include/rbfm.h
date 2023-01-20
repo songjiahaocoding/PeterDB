@@ -147,7 +147,7 @@ namespace PeterDB {
     public:
         Record(const std::vector<Attribute> &recordDescriptor,
                const void *data, RID &rid);
-        ~Record() = default;
+        ~Record();
         bool isNull(int);
         const char* getRecord() const;
 

@@ -199,6 +199,11 @@ namespace PeterDB {
         buildRecord(recordDescriptor, val);
     }
 
+    Record::~Record() {
+        delete [] data;
+        delete [] index;
+    }
+
     bool Record::isNull(int fieldNum) {
         int bytes = fieldNum / CHAR_BIT;
         int bits = fieldNum % CHAR_BIT;
@@ -312,6 +317,8 @@ namespace PeterDB {
         return PAGE_SIZE-info[DATA_OFFSET]-info[INFO_OFFSET];
     }
 
-    Page::~Page() = default;
+    Page::~Page() {
+        delete [] page;
+    };
 }// namespace PeterDB
 

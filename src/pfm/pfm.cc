@@ -71,7 +71,8 @@ namespace PeterDB {
         file = nullptr;
     }
 
-    FileHandle::~FileHandle() = default;
+    FileHandle::~FileHandle() {
+    };
 
     FileHandle &FileHandle::operator=(const FileHandle &) {
         return *this;
@@ -173,7 +174,7 @@ namespace PeterDB {
         info[APPEND_NUM] = *(unsigned *)(data+offset);
         offset+=sizeof (unsigned);
         info[ACTIVE_PAGE_NUM] = *(unsigned *)(data+offset);
-        delete value;
+        delete [] value;
     }
 
     void infoPage::flushInfoPage(FILE *file) {
