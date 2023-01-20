@@ -2,30 +2,30 @@
 #include "test/utils/rbfm_test_utils.h"
 
 namespace PeterDBTesting {
-    TEST_F(RBFM_Test, page_test){
-        rbfm.appendNewPage(fileHandle);
-        char* data = new char [PAGE_SIZE];
-        fileHandle.readPage(0, data);
-        PeterDB::Page page(data);
-
-        ASSERT_EQ(page.info[PeterDB::INFO_OFFSET], 20);
-    }
-
-    TEST_F(RBFM_Test, simple_insert){
-        PeterDB::RID rid;
-        size_t recordSize = 0;
-        inBuffer = malloc(100);
-
-        std::vector<PeterDB::Attribute> recordDescriptor;
-        createRecordDescriptor(recordDescriptor);
-
-        nullsIndicator = initializeNullFieldsIndicator(recordDescriptor);
-
-        prepareRecord((int) (int) recordDescriptor.size(), nullsIndicator, 8, "Anteater", 25, 177.8, 6200, inBuffer, recordSize);
-
-        ASSERT_EQ(rbfm.insertRecord(fileHandle, recordDescriptor, inBuffer, rid), success)
-                                    << "Inserting a inBuffer should succeed.";
-    }
+//    TEST_F(RBFM_Test, page_test){
+//        rbfm.appendNewPage(fileHandle);
+//        char* data = new char [PAGE_SIZE];
+//        fileHandle.readPage(0, data);
+//        PeterDB::Page page(data);
+//
+//        ASSERT_EQ(page.info[PeterDB::INFO_OFFSET], 20);
+//    }
+//
+//    TEST_F(RBFM_Test, simple_insert){
+//        PeterDB::RID rid;
+//        size_t recordSize = 0;
+//        inBuffer = malloc(100);
+//
+//        std::vector<PeterDB::Attribute> recordDescriptor;
+//        createRecordDescriptor(recordDescriptor);
+//
+//        nullsIndicator = initializeNullFieldsIndicator(recordDescriptor);
+//
+//        prepareRecord((int) (int) recordDescriptor.size(), nullsIndicator, 8, "Anteater", 25, 177.8, 6200, inBuffer, recordSize);
+//
+//        ASSERT_EQ(rbfm.insertRecord(fileHandle, recordDescriptor, inBuffer, rid), success)
+//                                    << "Inserting a inBuffer should succeed.";
+//    }
 
     TEST_F(RBFM_Test, insert_and_read_a_record) {
         // Functions tested

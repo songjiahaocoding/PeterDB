@@ -302,8 +302,8 @@ namespace PeterDB {
      *  second: The record size
     */
     std::pair<short int, short int> Page::getSlotInfo(short unsigned slotNum) {
-        void* slotPtr = page + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM - (slotNum + 1) * SLOT_NUM;
-        return static_cast<std::pair<short int, short int>*>(slotPtr)[0];
+        void* slotPtr = page + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM - (slotNum + 1) * SLOT_SIZE;
+        return reinterpret_cast<std::pair<uint16_t,uint16_t>*>(slotPtr)[0];
     }
 
     unsigned Page::getFreeSpace() {

@@ -173,7 +173,6 @@ namespace PeterDB {
         offset+=sizeof (unsigned);
         info[ACTIVE_PAGE_NUM] = *(unsigned *)(data+offset);
         delete value;
-        delete [] data;
     }
 
     void infoPage::flushInfoPage(FILE *file) {
