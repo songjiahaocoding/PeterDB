@@ -1,5 +1,4 @@
 #include <iostream>
-#include <cmath>
 #include "src/include/pfm.h"
 
 namespace PeterDB {
@@ -94,16 +93,22 @@ namespace PeterDB {
             fseek(file, (pageNum+1)*PAGE_SIZE, SEEK_SET);
             fwrite(data, PAGE_SIZE, 1, file);
             infoPage->info[WRITE_NUM]++;
+            infoPage->flushInfoPage(file);
             return 0;
         }
         return -1;
     }
 
     RC FileHandle::appendPage(const void *data) {
+        char* val = new char [PAGE_SIZE];
+        memset((void*)val, 0, PAGE_SIZE);
+        memcpy((void*)val, data, PAGE_SIZE);
         fseek(file, 0, SEEK_END);
-        fwrite(data, PAGE_SIZE, 1, file);
+        fwrite(val, PAGE_SIZE, 1, file);
         infoPage->info[ACTIVE_PAGE_NUM]++;
         infoPage->info[APPEND_NUM]++;
+        infoPage->flushInfoPage(file);
+        delete [] val;
         return 0;
     }
 
@@ -125,7 +130,7 @@ namespace PeterDB {
             std::cout << "This FileHandle is handling another file." << std::endl;
             return -1;
         }
-        file = fopen(fileName.c_str(), "r+");
+        file = fopen(fileName.c_str(), "r+b");
         if(!handlingFile()){
             std::cout << "Error cannot open the file " << fileName << std::endl;
             return -1;
@@ -151,21 +156,26 @@ namespace PeterDB {
     }
 
     infoPage::infoPage() {
+        memset(info, 0, ACTIVE_PAGE_NUM*sizeof(unsigned));
         info[READ_NUM]  = 0;
         info[WRITE_NUM] = 0;
         info[APPEND_NUM] = 0;
         info[ACTIVE_PAGE_NUM] = 0;
     }
 
-    void infoPage::readInfoPage(FILE *file) {
+    void infoPage::readInfoPage(FILE* file) {
+        char* data = new char [sizeof(unsigned)*INFO_NUM];
         fseek(file, 0, SEEK_SET);
-        char* data = new char [PAGE_SIZE];
-        fread(data, PAGE_SIZE, 1, file);
+        fread(data, sizeof(unsigned)*INFO_NUM, 1, file);
         auto* value = (unsigned*)data;
-        info[READ_NUM] = value[READ_NUM];
-        info[WRITE_NUM] = value[WRITE_NUM];
-        info[APPEND_NUM] = value[APPEND_NUM];
-        info[ACTIVE_PAGE_NUM] = value[ACTIVE_PAGE_NUM];
+        short offset = 0;
+        info[READ_NUM] = *(unsigned *)(data+offset);
+        offset+=sizeof (unsigned);
+        info[WRITE_NUM] = *(unsigned *)(data+offset);
+        offset+=sizeof (unsigned);
+        info[APPEND_NUM] = *(unsigned *)(data+offset);
+        offset+=sizeof (unsigned);
+        info[ACTIVE_PAGE_NUM] = *(unsigned *)(data+offset);
         delete value;
     }
 
@@ -176,47 +186,6 @@ namespace PeterDB {
 
     infoPage::~infoPage() = default;
 
-    #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
 
-    Page::Page(const void *data) {
-        memcpy(&info, (char*)data + PAGE_SIZE - sizeof info, sizeof info);
-
-        page = new char [PAGE_SIZE];
-        memcpy(page, data, PAGE_SIZE);
-    }
-
-    // Read the indicated record
-    void Page::readRecord(FileHandle &fileHandle, int offset, int recordSize, void *data) {
-        char* recordPtr = page + offset;
-        int fieldNum = *(int*)recordPtr;
-        char* flagPtr = recordPtr + sizeof(short int);
-        short int flag_size = std::ceil( static_cast<double>(fieldNum) /CHAR_BIT);
-        char* dataPtr = flagPtr + flag_size + INDEX_SIZE*fieldNum;
-
-        memcpy(data, flagPtr, flag_size);
-        memcpy((char*)data+flag_size, dataPtr, recordSize-flag_size-INDEX_SIZE*fieldNum-sizeof (short int));
-    }
-
-    // Write record to given place
-    void Page::writeRecord(const Record &record, FileHandle &fileHandle, unsigned int availablePage, RID &rid) {
-        // Assign the new RID
-        rid = {availablePage, info[SLOT_NUM]};
-        // Write the record to page
-        memcpy(page+info[DATA_OFFSET], record.getRecord(), record.size);
-        // Write a new slot information
-        std::pair<short int ,short int> newSlot;
-        newSlot = {info[DATA_OFFSET], record.size};
-        memcpy((char*)page + PAGE_SIZE - info[INFO_OFFSET] - SLOT_SIZE, &newSlot, SLOT_SIZE);
-        // Update information
-        info[DATA_OFFSET] += record.size;
-        info[INFO_OFFSET] += SLOT_SIZE;
-        info[SLOT_NUM]++;
-        // Write back
-        memcpy((char*)page + PAGE_SIZE - sizeof(unsigned) * INFO_NUM, &info, sizeof(unsigned) * INFO_NUM);
-        // Write to disk
-        fileHandle.writePage(availablePage, page);
-    }
-
-    Page::~Page() = default;
 } // namespace PeterDB
 

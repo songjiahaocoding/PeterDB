@@ -99,8 +99,7 @@ namespace PeterDB {
                         RID &rid);
 
         // Read a record identified by the given rid.
-        RC
-        readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor, const RID &rid, void *data);
+        RC readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor, const RID &rid, void *data);
 
         // Print the record that is passed to this utility method.
         // This method will be mainly used for debugging/testing.
@@ -139,6 +138,7 @@ namespace PeterDB {
         ~RecordBasedFileManager();                                                  // Prevent unwanted destruction
         RecordBasedFileManager(const RecordBasedFileManager &);                     // Prevent construction by copying
         RecordBasedFileManager &operator=(const RecordBasedFileManager &);          // Prevent assignment
+        unsigned int getNextAvailablePageNum(short int insertSize, PeterDB::FileHandle &handle, unsigned num);
 
     };
 
@@ -159,6 +159,28 @@ namespace PeterDB {
     private:
         char* data;
         char* flag;
+    };
+
+    #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
+    enum pageInfo {
+        INFO_OFFSET = 0,
+        DATA_OFFSET,
+        SLOT_NUM,
+        PAGE_INFO_NUM
+    };
+    class Page {
+    public:
+        Page(const void* data);
+        ~Page();
+
+        unsigned info[PAGE_INFO_NUM]{};
+        char* page;
+
+        void readRecord(FileHandle& fileHandle, int offset, int recordSize, void* data);
+        void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
+        unsigned getFreeSpace();
+
+        std::pair<short int, short int> getSlotInfo(unsigned short slotNum);
     };
 
 } // namespace PeterDB

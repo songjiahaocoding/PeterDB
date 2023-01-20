@@ -298,4 +298,15 @@ namespace PeterDBTesting {
         ASSERT_EQ(memcmp(inBuffer, outBuffer, PAGE_SIZE), 0) << "Checking the integrity of a page should succeed.";
 
     }
+
+    TEST_F(PFM_Page_Test, write_and_check_data) {
+        inBuffer = malloc(PAGE_SIZE);
+        generateData(inBuffer, PAGE_SIZE);
+        ASSERT_EQ(fileHandle.appendPage(inBuffer), success) << "Appending a page should succeed.";
+
+        char* outBuffer = new char [PAGE_SIZE];
+        memset(outBuffer, 0, PAGE_SIZE);
+        fileHandle.readPage(0, outBuffer);
+        ASSERT_EQ(*(char*)inBuffer, *outBuffer) << "in n out should be equal";
+    }
 } // namespace PeterDBTesting
