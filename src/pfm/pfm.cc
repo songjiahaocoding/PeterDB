@@ -1,5 +1,6 @@
 #include <iostream>
 #include "src/include/pfm.h"
+#include <cstring>
 
 namespace PeterDB {
     // Meyers' Singleton

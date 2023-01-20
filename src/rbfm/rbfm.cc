@@ -1,5 +1,7 @@
 #include <cmath>
 #include <iostream>
+#include <cstring>
+#include <climits>
 #include "src/include/rbfm.h"
 
 namespace PeterDB {
