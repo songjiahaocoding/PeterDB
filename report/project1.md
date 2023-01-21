@@ -42,16 +42,17 @@
   - And there is slots which is related to specific record. The slot part will grow in the opposite direction as the record grows.
     The slot of the first record will be stored right next to the basic information part.
   It can be illustrated as below:
+  ![Page Format](pics/page.png)
   
-
-
 - Explain your slot directory design if applicable.
   - The slots will store the offset of that record as well as its size. 
 
 
 ### 4. Page Management
 - Show your algorithm of finding next available-space page when inserting a record.
-
+  - As I store two offsets for the data and the information, I can easily compute the remaining space
+  using these two information.
+  - I will start from the last page and look for a page which the record can fit in. 
 
 
 - How many hidden pages are utilized in your design?
@@ -59,7 +60,11 @@
 
 
 - Show your hidden page(s) format design if applicable
-
+  - The hidden page just store four information about the all the pages:
+    - WRITE_NUM: The sum of total write operations
+    - READ_NUM: The sum of total read operations
+    - APPEND_NUM: The sum of total append operations
+    - ACTIVE_PAGE_NUM: The current number of pages in this file
 
 
 ### 5. Implementation Detail
