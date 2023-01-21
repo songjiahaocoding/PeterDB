@@ -50,7 +50,9 @@ namespace PeterDB {
         return 0;
     }
 
-    /*
+    void writeRecord(const Record record, FileHandle &handle, int num, RID &rid, char *data);
+
+/*
      * - The first part of data will contain the flag information
      * - When the flag is set to 1, it means the corresponding field contains null
      * - The field with null value will not use any space in the data.
@@ -64,7 +66,7 @@ namespace PeterDB {
             appendNewPage(fileHandle);
         }
 
-        const Record record(recordDescriptor, data, rid);
+        Record record(recordDescriptor, data, rid);
         /*
          * find the next available page and perform the follwing operation
          *  - insert the record into a page
@@ -73,19 +75,36 @@ namespace PeterDB {
         char* pageData = new char [PAGE_SIZE];
         memset((void*)pageData, 0, PAGE_SIZE);
 
-        uint32_t lastPageNum = fileHandle.getNumberOfPages()-1;
+        unsigned lastPageNum = fileHandle.getNumberOfPages()-1;
         unsigned pageNum = getNextAvailablePageNum(record.size + SLOT_SIZE, fileHandle, lastPageNum);
         fileHandle.readPage(pageNum, (void *) pageData);
-        Page page(pageData);
-        page.writeRecord(record, fileHandle, pageNum, rid);
+//        Page page(pageData);
+//        page.writeRecord(record, fileHandle, pageNum, rid);
+        writeRecord(record, fileHandle, pageNum, rid, pageData);
 
-//        char* val = new char [PAGE_SIZE];
-//        memset(val, 0, PAGE_SIZE);
-//        readRecord(fileHandle, recordDescriptor, rid, val);
-//        printRecord(recordDescriptor, val, std::cout);
         delete [] pageData;
 
         return 0;
+    }
+
+    void RecordBasedFileManager::writeRecord(const Record& record, FileHandle &handle, unsigned num, RID &rid, char* data) {
+        unsigned* info = new unsigned [PAGE_INFO_NUM];
+        memcpy(&info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
+        rid = {num, static_cast<unsigned short>(info[SLOT_NUM])};
+        // Write the record to page
+        memcpy(data+info[DATA_OFFSET], record.getRecord(), record.size);
+        // Write a new slot information
+        std::pair<short int ,short int> newSlot;
+        newSlot = {info[DATA_OFFSET], record.size};
+        memcpy(data + PAGE_SIZE - info[INFO_OFFSET] - SLOT_SIZE, &newSlot, SLOT_SIZE);
+        // Update information
+        info[DATA_OFFSET] += record.size;
+        info[INFO_OFFSET] += SLOT_SIZE;
+        info[SLOT_NUM]++;
+        // Write back
+        memcpy((void*)(data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM), info, sizeof(unsigned) * PAGE_INFO_NUM);
+        // Write to disk
+        handle.writePage(num, data);
     }
 
     // Should also return the flag information and stick to the format as before
@@ -176,7 +195,7 @@ namespace PeterDB {
         return -1;
     }
 
-    unsigned int RecordBasedFileManager::getNextAvailablePageNum(short int insertSize, FileHandle &handle, unsigned int startingNum) {
+    unsigned RecordBasedFileManager::getNextAvailablePageNum(short int insertSize, FileHandle &handle, unsigned int startingNum) {
         for (int i = 0; i < handle.getNumberOfPages(); ++i) {
             char* pageData = new char [PAGE_SIZE];
             memset(pageData, 0, PAGE_SIZE);
@@ -283,8 +302,6 @@ namespace PeterDB {
     // Write record to the given place
     void Page::writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid) {
         // Assign the new RID
-
-        // rid didn't change?
         rid = {availablePage, static_cast<unsigned short>(info[SLOT_NUM])};
         // Write the record to page
         memcpy(page+info[DATA_OFFSET], record.getRecord(), record.size);

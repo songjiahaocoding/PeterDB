@@ -35,6 +35,25 @@ namespace PeterDB {
         NO_OP       // no condition
     } CompOp;
 
+    #define INDEX_SIZE 2
+    class Record {
+    public:
+        Record(const std::vector<Attribute> &recordDescriptor,
+               const void *data, RID &rid);
+        ~Record();
+        bool isNull(int);
+        const char* getRecord() const;
+
+        RID rid;
+        short int  fieldNum;
+        short int  size;
+        short int* index;
+        void buildRecord(const std::vector<Attribute> &descriptor, const void* data);
+    private:
+        char* data;
+        char* flag;
+    };
+
 
     /********************************************************************
     * The scan iterator is NOT required to be implemented for Project 1 *
@@ -78,6 +97,8 @@ namespace PeterDB {
         RC closeFile(FileHandle &fileHandle);                               // Close a record-based file
 
         RC appendNewPage(FileHandle &fileHandle);
+
+        void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid, char* data);
 
         //  Format of the data passed into the function is the following:
         //  [n byte-null-indicators for y fields] [actual value for the first field] [actual value for the second field] ...
@@ -138,28 +159,11 @@ namespace PeterDB {
         ~RecordBasedFileManager();                                                  // Prevent unwanted destruction
         RecordBasedFileManager(const RecordBasedFileManager &);                     // Prevent construction by copying
         RecordBasedFileManager &operator=(const RecordBasedFileManager &);          // Prevent assignment
-        unsigned int getNextAvailablePageNum(short int insertSize, PeterDB::FileHandle &handle, unsigned num);
+        unsigned getNextAvailablePageNum(short int insertSize, PeterDB::FileHandle &handle, unsigned num);
 
     };
 
-    #define INDEX_SIZE 2
-    class Record {
-    public:
-        Record(const std::vector<Attribute> &recordDescriptor,
-               const void *data, RID &rid);
-        ~Record();
-        bool isNull(int);
-        const char* getRecord() const;
 
-        RID rid;
-        short int  fieldNum;
-        short int  size;
-        short int* index;
-        void buildRecord(const std::vector<Attribute> &descriptor, const void* data);
-    private:
-        char* data;
-        char* flag;
-    };
 
     #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
     enum pageInfo {
