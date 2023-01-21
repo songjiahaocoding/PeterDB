@@ -99,6 +99,8 @@ namespace PeterDB {
         RC appendNewPage(FileHandle &fileHandle);
 
         void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid, char* data);
+        void fetchRecord(int offset, int recordSize, void* data, void* page);
+        unsigned int getFreeSpace(char* data);
 
         //  Format of the data passed into the function is the following:
         //  [n byte-null-indicators for y fields] [actual value for the first field] [actual value for the second field] ...
@@ -161,6 +163,9 @@ namespace PeterDB {
         RecordBasedFileManager &operator=(const RecordBasedFileManager &);          // Prevent assignment
         unsigned getNextAvailablePageNum(short int insertSize, PeterDB::FileHandle &handle, unsigned num);
 
+        std::pair<short, short> getSlotInfo(unsigned short slotNum, char *data);
+
+
     };
 
 
@@ -172,21 +177,6 @@ namespace PeterDB {
         SLOT_NUM,
         PAGE_INFO_NUM
     };
-    class Page {
-    public:
-        Page(const void* data);
-        ~Page();
-
-        unsigned info[PAGE_INFO_NUM]{};
-        char* page;
-
-        void readRecord(FileHandle& fileHandle, int offset, int recordSize, void* data);
-        void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
-        unsigned getFreeSpace();
-
-        std::pair<short int, short int> getSlotInfo(unsigned short slotNum);
-    };
-
 } // namespace PeterDB
 
 #endif // _rbfm_h_
