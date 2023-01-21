@@ -162,7 +162,7 @@ namespace PeterDBTesting {
     class RBFM_Test : public ::testing::Test {
     protected:
 
-        std::string fileName = "pfm_test_file";
+        std::string fileName = "rbfm_test_file";
         PeterDB::FileHandle fileHandle;
         void *inBuffer = nullptr, *outBuffer = nullptr;
         unsigned char *nullsIndicator = nullptr;
@@ -182,6 +182,7 @@ namespace PeterDBTesting {
 
             // Open the file
             ASSERT_EQ(rbfm.openFile(fileName, fileHandle), success) << "Opening the file should not fail: " << fileName;
+
         }
 
         void TearDown() override {
