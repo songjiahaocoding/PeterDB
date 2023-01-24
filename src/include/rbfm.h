@@ -2,6 +2,7 @@
 #define _rbfm_h_
 
 #include <vector>
+#include <map>
 #include "pfm.h"
 
 namespace PeterDB {
@@ -49,9 +50,8 @@ namespace PeterDB {
         short int  size;
         short int* index;
         void buildRecord(const std::vector<Attribute> &descriptor, const void* data);
-    private:
-        char* data;
         char* flag;
+        char* data;
     };
 
 
@@ -101,6 +101,8 @@ namespace PeterDB {
         void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid, char* data);
         void fetchRecord(int offset, int recordSize, void* data, void* page);
         unsigned int getFreeSpace(char* data);
+
+        void compact(FileHandle& fileHandle, int pageNum, short idx, short offset);
 
         //  Format of the data passed into the function is the following:
         //  [n byte-null-indicators for y fields] [actual value for the first field] [actual value for the second field] ...
@@ -165,10 +167,8 @@ namespace PeterDB {
 
         std::pair<short, short> getSlotInfo(unsigned short slotNum, char *data);
 
-
+        void updateInfo(FileHandle& fileHandle, char *data, unsigned pageNum, std::map<unsigned, unsigned > valMap);
     };
-
-
 
     #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
     enum pageInfo {

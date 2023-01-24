@@ -88,7 +88,7 @@ namespace PeterDB {
         memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
         rid = {num, static_cast<unsigned short>(info[SLOT_NUM])};
         // Write the record to page
-        memcpy(data+info[DATA_OFFSET], record.getRecord(), record.size);
+        memcpy(data+info[DATA_OFFSET], record.data, record.size);
         // Write a new slot information
         std::pair<short int ,short int> newSlot;
         newSlot = {info[DATA_OFFSET], record.size};
@@ -191,12 +191,21 @@ namespace PeterDB {
 
     /*
      *  PART 2
+     *  TODO：
+     *  1. Compact the page, reuse the space after deletion
+     *  2. Reuse the deleted slot space
      */
     RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                             const RID &rid) {
+        char* pageData = new char [PAGE_SIZE];
+        fileHandle.readPage(rid.pageNum, pageData);
+        getSlotInfo(rid.slotNum, pageData);
         return -1;
     }
-
+    /*
+     * 1. Migrate: tombstone -  Pointing to the new location
+     * 2. Compact: reuse space
+     */
     RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                             const void *data, const RID &rid) {
         return -1;
@@ -237,6 +246,23 @@ namespace PeterDB {
         unsigned info_offset = info[INFO_OFFSET];
         delete [] info;
         return PAGE_SIZE-data_offset-info_offset;
+    }
+
+    void RecordBasedFileManager::updateInfo(FileHandle& fileHandle, char* data, unsigned pageNum, std::map<unsigned, unsigned> valMap){
+        unsigned* info = new unsigned [PAGE_INFO_NUM];
+        memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
+        for(const auto &entry: valMap){
+            info[entry.first] = entry.second;
+        }
+        memcpy((void*)(data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM), info, sizeof(unsigned) * PAGE_INFO_NUM);
+        fileHandle.writePage(pageNum, data);
+    }
+
+    // Used to compact the page
+    // 1. Update the page information
+    // 2. Compact the page
+    void RecordBasedFileManager::compact(FileHandle &fileHandle, int pageNum, short idx, short offset) {
+
     }
 
     Record::Record(const std::vector<Attribute> &recordDescriptor, const void *val, RID &rid) {
@@ -301,10 +327,6 @@ namespace PeterDB {
 
         // content
         memcpy(data + recordOffset, (char*)value+flag_size, totalSize);
-    }
-
-    const char* Record::getRecord() const {
-        return data;
     }
 }// namespace PeterDB
 

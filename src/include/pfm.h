@@ -72,15 +72,10 @@ namespace PeterDB {
         bool handlingFile();
 
         RC closeFile();
-
     private:
         FILE *file;
-        PeterDB::infoPage *infoPage;
+        PeterDB::infoPage* infoPage;
     };
-
-
-
-
 } // namespace PeterDB
 
 #endif // _pfm_h_
