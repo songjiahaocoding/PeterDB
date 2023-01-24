@@ -56,6 +56,10 @@ namespace PeterDB {
      * - The field with null value will not use any space in the data.
      *
      * - rid: Uniquely identify a record in a file. page_num + slot_num 6 bytes.
+     *
+     *  Reuse slot: insertSlot() to determine if there is deleted slot.
+     *
+     *  Tombstone: use a pointer and compact the space
      */
     RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                             const void *data, RID &rid) {
@@ -84,25 +88,45 @@ namespace PeterDB {
     }
 
     void RecordBasedFileManager::writeRecord(const Record& record, FileHandle &handle, unsigned num, RID &rid, char* data) {
-        unsigned* info = new unsigned [PAGE_INFO_NUM];
-        memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
-        rid = {num, static_cast<unsigned short>(info[SLOT_NUM])};
+        auto* info = new unsigned [PAGE_INFO_NUM];
+        getInfo(data, info);
+        auto slotID = getDeletedSlot(data);
+        if(slotID<0){
+            slotID = info[SLOT_NUM];
+            info[SLOT_NUM]++;
+            info[INFO_OFFSET] += SLOT_SIZE;
+        }
+        rid = {num, slotID};
         // Write the record to page
         memcpy(data+info[DATA_OFFSET], record.data, record.size);
         // Write a new slot information
         std::pair<short int ,short int> newSlot;
         newSlot = {info[DATA_OFFSET], record.size};
-        memcpy(data + PAGE_SIZE - info[INFO_OFFSET] - SLOT_SIZE, &newSlot, SLOT_SIZE);
+        auto info_offset = sizeof(unsigned short)*PAGE_INFO_NUM + rid.slotNum*SLOT_SIZE;
+        memcpy(data + PAGE_SIZE - info_offset - SLOT_SIZE, &newSlot, SLOT_SIZE);
         // Update information
         info[DATA_OFFSET] += record.size;
-        info[INFO_OFFSET] += SLOT_SIZE;
-        info[SLOT_NUM]++;
         // Write back
         memcpy((void*)(data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM), info, sizeof(unsigned) * PAGE_INFO_NUM);
         // Write to disk
         handle.writePage(num, data);
 
         delete [] info;
+    }
+
+    void RecordBasedFileManager::getInfo(const char* data, unsigned *info){
+        memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
+    }
+
+    unsigned short RecordBasedFileManager::getDeletedSlot(const char* data){
+        auto* info = new unsigned [PAGE_INFO_NUM];
+        getInfo(data, info);
+        auto slotNum = (info[INFO_OFFSET]-sizeof(short)*PAGE_INFO_NUM)/SLOT_SIZE;
+        for(unsigned short i=0;i<slotNum;i++){
+            auto slot = getSlotInfo(i, data);
+            if(slot.first == DELETE_MARK) return i;
+        }
+        return -1;
     }
 
     // Should also return the flag information and stick to the format as before
@@ -125,9 +149,12 @@ namespace PeterDB {
      * Slot:
      *  first: offset from the beginning
      *  second: The record size
+     * Deleted:
+     *  first = 5000
+     *  second = 0
     */
-    std::pair<short int, short int> RecordBasedFileManager::getSlotInfo(short unsigned slotNum, char* data) {
-        void* slotPtr = data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM - (slotNum + 1) * SLOT_SIZE;
+    std::pair<short int, short int> RecordBasedFileManager::getSlotInfo(short unsigned slotNum, const char* data) {
+        void* slotPtr = (void *) (data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM - (slotNum + 1) * SLOT_SIZE);
         return reinterpret_cast<std::pair<short int,short int>*>(slotPtr)[0];
     }
 
@@ -199,9 +226,11 @@ namespace PeterDB {
                                             const RID &rid) {
         char* pageData = new char [PAGE_SIZE];
         fileHandle.readPage(rid.pageNum, pageData);
-        getSlotInfo(rid.slotNum, pageData);
+
+
         return -1;
     }
+
     /*
      * 1. Migrate: tombstone -  Pointing to the new location
      * 2. Compact: reuse space
@@ -240,8 +269,8 @@ namespace PeterDB {
     }
 
     unsigned RecordBasedFileManager::getFreeSpace(char* data) {
-        unsigned* info = new unsigned [PAGE_INFO_NUM];
-        memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
+        auto* info = new unsigned [PAGE_INFO_NUM];
+        getInfo(data, info);
         unsigned data_offset = info[DATA_OFFSET];
         unsigned info_offset = info[INFO_OFFSET];
         delete [] info;
@@ -249,8 +278,8 @@ namespace PeterDB {
     }
 
     void RecordBasedFileManager::updateInfo(FileHandle& fileHandle, char* data, unsigned pageNum, std::map<unsigned, unsigned> valMap){
-        unsigned* info = new unsigned [PAGE_INFO_NUM];
-        memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
+        auto* info = new unsigned [PAGE_INFO_NUM];
+        getInfo(data, info);
         for(const auto &entry: valMap){
             info[entry.first] = entry.second;
         }
@@ -263,6 +292,12 @@ namespace PeterDB {
     // 2. Compact the page
     void RecordBasedFileManager::compact(FileHandle &fileHandle, int pageNum, short idx, short offset) {
 
+    }
+
+    bool RecordBasedFileManager::isTomb(char* data){
+        short id;
+        memcpy(&id, data, sizeof(short));
+        return id==DELETE_MARK;
     }
 
     Record::Record(const std::vector<Attribute> &recordDescriptor, const void *val, RID &rid) {
@@ -308,7 +343,6 @@ namespace PeterDB {
             }
         }
 
-
         size = sizeof(short int)+flag_size + INDEX_SIZE*fieldNum + totalSize;
         data = new char [size];
         memset(data, 0, sizeof(char)*size);
@@ -327,6 +361,11 @@ namespace PeterDB {
 
         // content
         memcpy(data + recordOffset, (char*)value+flag_size, totalSize);
+    }
+
+    tombStone::tombStone(unsigned int pageNum, unsigned short slotNum) {
+        this->pageNum = pageNum;
+        this->slotNum = slotNum;
     }
 }// namespace PeterDB
 

@@ -6,6 +6,9 @@
 #include "pfm.h"
 
 namespace PeterDB {
+    // More than 4096 the PAGE_SIZE
+    #define DELETE_MARK 5000;
+
     // Record ID
     typedef struct {
         unsigned pageNum;           // page number
@@ -165,9 +168,15 @@ namespace PeterDB {
         RecordBasedFileManager &operator=(const RecordBasedFileManager &);          // Prevent assignment
         unsigned getNextAvailablePageNum(short int insertSize, PeterDB::FileHandle &handle, unsigned num);
 
-        std::pair<short, short> getSlotInfo(unsigned short slotNum, char *data);
+        std::pair<short, short> getSlotInfo(unsigned short slotNum, const char *data);
 
         void updateInfo(FileHandle& fileHandle, char *data, unsigned pageNum, std::map<unsigned, unsigned > valMap);
+
+        bool isTomb(char *data);
+
+        unsigned short getDeletedSlot(const char *data);
+
+        void getInfo(const char *data, unsigned int *info);
     };
 
     #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
@@ -176,6 +185,15 @@ namespace PeterDB {
         DATA_OFFSET,
         SLOT_NUM,
         PAGE_INFO_NUM
+    };
+
+    class tombStone{
+    public:
+        unsigned pageNum;
+        unsigned short slotNum;
+        tombStone(unsigned pageNum, unsigned short slotNum);
+        tombStone() = default;
+        ~tombStone() = default;
     };
 } // namespace PeterDB
 
