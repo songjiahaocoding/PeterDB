@@ -87,7 +87,7 @@ namespace PeterDB {
 
     void RecordBasedFileManager::writeRecord(const Record& record, FileHandle &handle, unsigned num, RID &rid, char* data) {
         auto* info = new unsigned [PAGE_INFO_NUM];
-        memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
+        getInfo(data, info);
         auto slotID = getDeletedSlot(data);
         if(slotID<0){
             slotID = info[SLOT_NUM];
@@ -119,7 +119,7 @@ namespace PeterDB {
 
     short RecordBasedFileManager::getDeletedSlot(char* data){
         auto* info = new unsigned [PAGE_INFO_NUM];
-        memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
+        getInfo(data, info);
         auto slotNum = (info[INFO_OFFSET]-sizeof(short)*PAGE_INFO_NUM)/SLOT_SIZE;
         for(unsigned short i=0;i<slotNum;i++){
             auto slot = getSlotInfo(i, data);
@@ -246,6 +246,7 @@ namespace PeterDB {
             deleteRecord(fileHandle, recordDescriptor, newRID);
         }
         info[DATA_OFFSET] -= slot.second;
+        // shift record data to reuse empty space
         memmove(data_offset, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
         slot.first = DELETE_MARK;
         auto slotPos = pageData + PAGE_SIZE - sizeof(unsigned )*PAGE_INFO_NUM-(rid.slotNum+1)*SLOT_SIZE;
@@ -304,13 +305,6 @@ namespace PeterDB {
     void RecordBasedFileManager::updateInfo(FileHandle& fileHandle, char* data, unsigned pageNum, unsigned* info){
         memcpy((void*)(data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM), info, sizeof(unsigned) * PAGE_INFO_NUM);
         fileHandle.writePage(pageNum, data);
-    }
-
-    // Used to compact the page
-    // 1. Update the page information
-    // 2. Compact the page
-    void RecordBasedFileManager::compact(FileHandle &fileHandle, int pageNum, short idx, short offset) {
-
     }
 
     bool RecordBasedFileManager::isTomb(char* data){
