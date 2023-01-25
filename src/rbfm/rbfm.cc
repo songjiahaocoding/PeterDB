@@ -87,20 +87,21 @@ namespace PeterDB {
 
     void RecordBasedFileManager::writeRecord(const Record& record, FileHandle &handle, unsigned num, RID &rid, char* data) {
         auto* info = new unsigned [PAGE_INFO_NUM];
-        getInfo(data, info);
+        memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
         auto slotID = getDeletedSlot(data);
         if(slotID<0){
             slotID = info[SLOT_NUM];
             info[SLOT_NUM]++;
             info[INFO_OFFSET] += SLOT_SIZE;
         }
-        rid = {num, slotID};
+        rid = {num, static_cast<unsigned short>(slotID)};
         // Write the record to page
         memcpy(data+info[DATA_OFFSET], record.data, record.size);
         // Write a new slot information
         std::pair<short int ,short int> newSlot;
         newSlot = {info[DATA_OFFSET], record.size};
-        auto info_offset = sizeof(unsigned short)*PAGE_INFO_NUM + rid.slotNum*SLOT_SIZE;
+
+        auto info_offset = sizeof(unsigned)*PAGE_INFO_NUM + rid.slotNum*SLOT_SIZE;
         memcpy(data + PAGE_SIZE - info_offset - SLOT_SIZE, &newSlot, SLOT_SIZE);
         // Update information
         info[DATA_OFFSET] += record.size;
@@ -112,13 +113,13 @@ namespace PeterDB {
         delete [] info;
     }
 
-    void RecordBasedFileManager::getInfo(const char* data, unsigned *info){
+    void RecordBasedFileManager::getInfo(char* data, unsigned *info){
         memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
     }
 
-    unsigned short RecordBasedFileManager::getDeletedSlot(const char* data){
+    short RecordBasedFileManager::getDeletedSlot(char* data){
         auto* info = new unsigned [PAGE_INFO_NUM];
-        getInfo(data, info);
+        memcpy(info, data + PAGE_SIZE - sizeof(unsigned)*PAGE_INFO_NUM, sizeof(unsigned)*PAGE_INFO_NUM);
         auto slotNum = (info[INFO_OFFSET]-sizeof(short)*PAGE_INFO_NUM)/SLOT_SIZE;
         for(unsigned short i=0;i<slotNum;i++){
             auto slot = getSlotInfo(i, data);
@@ -126,6 +127,7 @@ namespace PeterDB {
                 return i;
             }
         }
+        delete [] info;
         return -1;
     }
 
@@ -136,6 +138,7 @@ namespace PeterDB {
         memset(pageData, 0, PAGE_SIZE);
         if(fileHandle.readPage(rid.pageNum, pageData)==0){
             auto slot = getSlotInfo(rid.slotNum, pageData);
+            if(slot.first==5000)return -1;
             fetchRecord(slot.first, slot.second, data, pageData);
             delete [] pageData;
             return 0;
@@ -245,8 +248,11 @@ namespace PeterDB {
         info[DATA_OFFSET] -= slot.second;
         memmove(data_offset, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
         slot.first = DELETE_MARK;
+        auto slotPos = pageData + PAGE_SIZE - sizeof(unsigned )*PAGE_INFO_NUM-(rid.slotNum+1)*SLOT_SIZE;
+        memcpy(slotPos, &slot, SLOT_SIZE);
+        updateInfo(fileHandle, pageData, rid.pageNum, info);
         fileHandle.writePage(rid.pageNum, pageData);
-        return -1;
+        return 0;
     }
 
     /*

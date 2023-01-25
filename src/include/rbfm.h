@@ -176,9 +176,9 @@ namespace PeterDB {
 
         bool isTomb(char *data);
 
-        unsigned short getDeletedSlot(const char *data);
+        short getDeletedSlot(char *data);
 
-        void getInfo(const char *data, unsigned int *info);
+        void getInfo(char *data, unsigned int *info);
     };
 
     #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
