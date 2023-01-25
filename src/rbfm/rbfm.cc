@@ -124,6 +124,7 @@ namespace PeterDB {
         for(unsigned short i=0;i<slotNum;i++){
             auto slot = getSlotInfo(i, data);
             if(slot.first==5000) {
+                delete [] info;
                 return i;
             }
         }
@@ -138,7 +139,10 @@ namespace PeterDB {
         memset(pageData, 0, PAGE_SIZE);
         if(fileHandle.readPage(rid.pageNum, pageData)==0){
             auto slot = getSlotInfo(rid.slotNum, pageData);
-            if(slot.first==5000)return -1;
+            if(slot.first==5000){
+                delete [] pageData;
+                return -1;
+            }
             fetchRecord(slot.first, slot.second, data, pageData);
             delete [] pageData;
             return 0;
@@ -253,6 +257,8 @@ namespace PeterDB {
         memcpy(slotPos, &slot, SLOT_SIZE);
         updateInfo(fileHandle, pageData, rid.pageNum, info);
         fileHandle.writePage(rid.pageNum, pageData);
+        delete [] info;
+        delete [] pageData;
         return 0;
     }
 
