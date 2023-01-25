@@ -5,9 +5,11 @@
 #include <map>
 #include "pfm.h"
 
+// More than 4096 the PAGE_SIZE
+#define DELETE_MARK 5000;
+
 namespace PeterDB {
-    // More than 4096 the PAGE_SIZE
-    #define DELETE_MARK 5000;
+
 
     // Record ID
     typedef struct {
@@ -170,7 +172,7 @@ namespace PeterDB {
 
         std::pair<short, short> getSlotInfo(unsigned short slotNum, const char *data);
 
-        void updateInfo(FileHandle& fileHandle, char *data, unsigned pageNum, std::map<unsigned, unsigned > valMap);
+        void updateInfo(FileHandle& fileHandle, char *data, unsigned pageNum, unsigned* info);
 
         bool isTomb(char *data);
 
