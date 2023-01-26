@@ -225,8 +225,6 @@ namespace PeterDB {
 
     /*
      *  PART 2
-     *  TODO：
-     *  1. Compact the page, reuse the space after deletion
      */
     RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                             const RID &rid) {
@@ -239,15 +237,7 @@ namespace PeterDB {
         if(isTomb(data_offset)){
             // Tomb Handler:
             //  Recursively delete the pointer chain
-            unsigned pageNum;
-            unsigned short slotNum;
-            data_offset+=sizeof(unsigned short);
-            memcpy(&pageNum, data_offset, sizeof(unsigned));
-            data_offset+=sizeof(unsigned);
-            memcpy(&slotNum, data_offset, sizeof(unsigned short));
-            RID newRID = {pageNum, slotNum};
-
-            deleteRecord(fileHandle, recordDescriptor, newRID);
+            deleteRecord(fileHandle, recordDescriptor, getPointRID(data_offset));
         }
         info[DATA_OFFSET] -= slot.second;
         // shift record data to reuse empty space
@@ -268,7 +258,65 @@ namespace PeterDB {
      */
     RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                             const void *data, const RID &rid) {
-        return -1;
+        RID cpy = {rid.pageNum, rid.slotNum};
+        Record record(recordDescriptor, data, cpy);
+
+        char* pageData = new char [PAGE_SIZE];
+        memset(pageData, 0, PAGE_SIZE);
+        auto slot = getSlotInfo(rid.slotNum, pageData);
+        auto* info = new unsigned [PAGE_INFO_NUM];
+        getInfo(pageData, info);
+
+        auto data_offset = pageData+slot.first;
+        if(isTomb(data_offset)){
+            return updateRecord(fileHandle, recordDescriptor, data, getPointRID(data_offset));
+        }
+
+        char* oldData = new char [PAGE_SIZE];
+        fetchRecord(slot.first, slot.second, oldData, pageData);
+        Record oldRecord = Record(recordDescriptor, oldData, cpy);
+
+        if(record.size<oldRecord.size){
+            memcpy(data_offset, record.data, record.size);
+            memmove(data_offset+record.size, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+            info[DATA_OFFSET] -= oldRecord.size - record.size;
+            updateInfo(fileHandle, pageData, rid.pageNum, info);
+            fileHandle.writePage(rid.pageNum, pageData);
+            return 0;
+        }
+        // Record is the last record, and there is enough space in the middle
+        if(slot.first+slot.second==info[DATA_OFFSET] && getFreeSpace(pageData)>record.size-oldRecord.size){
+            memcpy(data_offset, record.data, record.size);
+            info[DATA_OFFSET] += record.size-oldRecord.size;
+            updateInfo(fileHandle, pageData, rid.pageNum, info);
+            fileHandle.writePage(rid.pageNum, pageData);
+            return 0;
+        }
+        // New available space for this record, need to migrate this record to a new page
+        insertRecord(fileHandle, recordDescriptor, data, cpy);
+        insertTomb(data_offset, rid.pageNum, rid.slotNum);
+        memmove(data_offset+TOMB_SIZE, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+        info[DATA_OFFSET] -= oldRecord.size-TOMB_SIZE;
+        updateInfo(fileHandle, pageData, rid.pageNum, info);
+        fileHandle.writePage(rid.pageNum, pageData);
+        return 0;
+    }
+
+    void RecordBasedFileManager::insertTomb(char* data, unsigned pageNum, unsigned short slotNum){
+        short deleteFlag = DELETE_MARK;
+        memcpy(data, &deleteFlag , INDEX_SIZE);
+        memcpy(data+INDEX_SIZE, &pageNum, sizeof (unsigned));
+        memcpy(data+INDEX_SIZE+sizeof(unsigned), &slotNum, sizeof(unsigned short));
+    }
+
+    RID RecordBasedFileManager::getPointRID(char* data_offset){
+        unsigned pageNum;
+        unsigned short slotNum;
+        data_offset+=sizeof(unsigned short);
+        memcpy(&pageNum, data_offset, sizeof(unsigned));
+        data_offset+=sizeof(unsigned);
+        memcpy(&slotNum, data_offset, sizeof(unsigned short));
+        return RID{pageNum, slotNum};
     }
 
     RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,

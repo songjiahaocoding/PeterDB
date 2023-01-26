@@ -8,7 +8,10 @@
 // More than 4096 the PAGE_SIZE
 #define DELETE_MARK 5000;
 
+
 namespace PeterDB {
+
+    #define TOMB_SIZE sizeof(unsigned) + sizeof(short)+INDEX_SIZE
 
 
     // Record ID
@@ -179,6 +182,12 @@ namespace PeterDB {
         short getDeletedSlot(char *data);
 
         void getInfo(char *data, unsigned int *info);
+
+        RID getPointRID(char *data_offset);
+
+        void insertTomb(char *data, unsigned int offset, unsigned int pageNum, unsigned short slotNum);
+
+        void insertTomb(char *data, unsigned int pageNum, unsigned short slotNum);
     };
 
     #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
