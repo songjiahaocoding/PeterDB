@@ -192,6 +192,10 @@ namespace PeterDB {
         void writeSlotInfo(unsigned short slotNum, const char *data, std::pair<short, short> slot);
 
         void shiftRecord(char *data, unsigned int offset, unsigned size, unsigned int shiftOffset, unsigned int len);
+
+        void
+        writeUpdateInfo(FileHandle &fileHandle, unsigned int *info, std::pair<short, short> slot, unsigned int size,
+                        unsigned int oldSize, const RID &rid, char *pageData);
     };
 
     #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)

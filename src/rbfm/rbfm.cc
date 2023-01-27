@@ -171,7 +171,6 @@ namespace PeterDB {
     }
 
     void RecordBasedFileManager::writeSlotInfo(unsigned short slotNum, const char* data, std::pair<short, short> slot){
-        void* slotPtr = (void *) (data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM - (slotNum + 1) * SLOT_SIZE);
         auto info_offset = sizeof(unsigned)*PAGE_INFO_NUM + slotNum*SLOT_SIZE;
         memcpy((void *) (data + PAGE_SIZE - info_offset - SLOT_SIZE), &slot, SLOT_SIZE);
     }
@@ -292,16 +291,11 @@ namespace PeterDB {
         fetchRecord(slot.first, slot.second, oldData, pageData);
         Record oldRecord = Record(recordDescriptor, oldData, cpy);
         delete [] oldData;
+
         if(record.size<oldRecord.size){
             memcpy(data_offset, record.data, record.size);
-//            memmove(data_offset+record.size, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
             shiftRecord(pageData, slot.first, record.size, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
-            info[DATA_OFFSET] -= oldRecord.size - record.size;
-            slot.second = record.size;
-            writeSlotInfo(rid.slotNum, pageData, slot);
-            updateInfo(fileHandle, pageData, rid.pageNum, info);
-            fileHandle.writePage(rid.pageNum, pageData);
-
+            writeUpdateInfo(fileHandle, info, slot, record.size, oldRecord.size, rid, pageData);
             delete [] pageData;
             delete [] info;
             return 0;
@@ -309,12 +303,7 @@ namespace PeterDB {
         // Record is the last record, and there is enough space in the middle
         if(slot.first+slot.second==info[DATA_OFFSET] && getFreeSpace(pageData)>record.size-oldRecord.size){
             memcpy(data_offset, record.data, record.size);
-            info[DATA_OFFSET] += record.size-oldRecord.size;
-            slot.second = record.size;
-            writeSlotInfo(rid.slotNum, pageData, slot);
-            updateInfo(fileHandle, pageData, rid.pageNum, info);
-            fileHandle.writePage(rid.pageNum, pageData);
-
+            writeUpdateInfo(fileHandle, info, slot, record.size, oldRecord.size, rid, pageData);
             delete [] pageData;
             delete [] info;
             return 0;
@@ -324,18 +313,21 @@ namespace PeterDB {
         fileHandle.readPage(rid.pageNum, pageData);
         getInfo(pageData, info);
         insertTomb(data_offset, cpy.pageNum, cpy.slotNum);
-        std::cout << info[DATA_OFFSET] << std::endl;
-//        memmove(data_offset+TOMB_SIZE, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
         shiftRecord(pageData, slot.first, TOMB_SIZE, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
-        slot.second = TOMB_SIZE;
-        writeSlotInfo(rid.slotNum, pageData, slot);
-        info[DATA_OFFSET] -= oldRecord.size-TOMB_SIZE;
-        updateInfo(fileHandle, pageData, rid.pageNum, info);
-        fileHandle.writePage(rid.pageNum, pageData);
+        writeUpdateInfo(fileHandle, info, slot, TOMB_SIZE, oldRecord.size, rid, pageData);
 
         delete [] pageData;
         delete [] info;
         return 0;
+    }
+
+    void RecordBasedFileManager::writeUpdateInfo(FileHandle &fileHandle, unsigned* info, std::pair<short, short> slot,
+                                                 unsigned size, unsigned oldSize, const RID &rid, char* pageData){
+        slot.second = size;
+        writeSlotInfo(rid.slotNum, pageData, slot);
+        info[DATA_OFFSET] += size-oldSize;
+        updateInfo(fileHandle, pageData, rid.pageNum, info);
+        fileHandle.writePage(rid.pageNum, pageData);
     }
 
     void RecordBasedFileManager::shiftRecord(char* data, unsigned offset, unsigned size, unsigned shiftOffset, unsigned len){
@@ -360,6 +352,7 @@ namespace PeterDB {
         memcpy(data+INDEX_SIZE+sizeof(unsigned), &slotNum, sizeof(unsigned short));
     }
 
+    // Return the pointed record by the tombstone
     RID RecordBasedFileManager::getPointRID(char* data_offset){
         unsigned pageNum;
         unsigned short slotNum;
