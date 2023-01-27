@@ -188,6 +188,10 @@ namespace PeterDB {
         void insertTomb(char *data, unsigned int offset, unsigned int pageNum, unsigned short slotNum);
 
         void insertTomb(char *data, unsigned int pageNum, unsigned short slotNum);
+
+        void writeSlotInfo(unsigned short slotNum, const char *data, std::pair<short, short> slot);
+
+        void shiftRecord(char *data, unsigned int offset, unsigned size, unsigned int shiftOffset, unsigned int len);
     };
 
     #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)

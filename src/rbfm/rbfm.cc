@@ -101,8 +101,7 @@ namespace PeterDB {
         std::pair<short int ,short int> newSlot;
         newSlot = {info[DATA_OFFSET], record.size};
 
-        auto info_offset = sizeof(unsigned)*PAGE_INFO_NUM + rid.slotNum*SLOT_SIZE;
-        memcpy(data + PAGE_SIZE - info_offset - SLOT_SIZE, &newSlot, SLOT_SIZE);
+        writeSlotInfo(rid.slotNum, data, newSlot);
         // Update information
         info[DATA_OFFSET] += record.size;
         // Write back
@@ -143,6 +142,12 @@ namespace PeterDB {
                 delete [] pageData;
                 return -1;
             }
+            auto data_offset = pageData+slot.first;
+            if(isTomb(data_offset)){
+                auto rc= readRecord(fileHandle, recordDescriptor, getPointRID(data_offset), data);
+                delete [] pageData;
+                return rc;
+            }
             fetchRecord(slot.first, slot.second, data, pageData);
             delete [] pageData;
             return 0;
@@ -163,6 +168,12 @@ namespace PeterDB {
     std::pair<short int, short int> RecordBasedFileManager::getSlotInfo(short unsigned slotNum, const char* data) {
         void* slotPtr = (void *) (data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM - (slotNum + 1) * SLOT_SIZE);
         return reinterpret_cast<std::pair<short int,short int>*>(slotPtr)[0];
+    }
+
+    void RecordBasedFileManager::writeSlotInfo(unsigned short slotNum, const char* data, std::pair<short, short> slot){
+        void* slotPtr = (void *) (data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM - (slotNum + 1) * SLOT_SIZE);
+        auto info_offset = sizeof(unsigned)*PAGE_INFO_NUM + slotNum*SLOT_SIZE;
+        memcpy((void *) (data + PAGE_SIZE - info_offset - SLOT_SIZE), &slot, SLOT_SIZE);
     }
 
     void RecordBasedFileManager::fetchRecord(int offset, int recordSize, void *data, void *page) {
@@ -239,9 +250,9 @@ namespace PeterDB {
             //  Recursively delete the pointer chain
             deleteRecord(fileHandle, recordDescriptor, getPointRID(data_offset));
         }
-        info[DATA_OFFSET] -= slot.second;
         // shift record data to reuse empty space
-        memmove(data_offset, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+        shiftRecord(pageData, slot.first, 0, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+        info[DATA_OFFSET] -= slot.second;
         slot.first = DELETE_MARK;
         auto slotPos = pageData + PAGE_SIZE - sizeof(unsigned )*PAGE_INFO_NUM-(rid.slotNum+1)*SLOT_SIZE;
         memcpy(slotPos, &slot, SLOT_SIZE);
@@ -263,43 +274,83 @@ namespace PeterDB {
 
         char* pageData = new char [PAGE_SIZE];
         memset(pageData, 0, PAGE_SIZE);
+        fileHandle.readPage(rid.pageNum, pageData);
         auto slot = getSlotInfo(rid.slotNum, pageData);
         auto* info = new unsigned [PAGE_INFO_NUM];
         getInfo(pageData, info);
 
         auto data_offset = pageData+slot.first;
         if(isTomb(data_offset)){
-            return updateRecord(fileHandle, recordDescriptor, data, getPointRID(data_offset));
+            auto rc = updateRecord(fileHandle, recordDescriptor, data, getPointRID(data_offset));
+            delete [] pageData;
+            delete [] info;
+            return rc;
         }
 
-        char* oldData = new char [PAGE_SIZE];
+        char* oldData = new char [slot.second];
+        memset(oldData, 0, slot.second);
         fetchRecord(slot.first, slot.second, oldData, pageData);
         Record oldRecord = Record(recordDescriptor, oldData, cpy);
-
+        delete [] oldData;
         if(record.size<oldRecord.size){
             memcpy(data_offset, record.data, record.size);
-            memmove(data_offset+record.size, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+//            memmove(data_offset+record.size, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+            shiftRecord(pageData, slot.first, record.size, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
             info[DATA_OFFSET] -= oldRecord.size - record.size;
+            slot.second = record.size;
+            writeSlotInfo(rid.slotNum, pageData, slot);
             updateInfo(fileHandle, pageData, rid.pageNum, info);
             fileHandle.writePage(rid.pageNum, pageData);
+
+            delete [] pageData;
+            delete [] info;
             return 0;
         }
         // Record is the last record, and there is enough space in the middle
         if(slot.first+slot.second==info[DATA_OFFSET] && getFreeSpace(pageData)>record.size-oldRecord.size){
             memcpy(data_offset, record.data, record.size);
             info[DATA_OFFSET] += record.size-oldRecord.size;
+            slot.second = record.size;
+            writeSlotInfo(rid.slotNum, pageData, slot);
             updateInfo(fileHandle, pageData, rid.pageNum, info);
             fileHandle.writePage(rid.pageNum, pageData);
+
+            delete [] pageData;
+            delete [] info;
             return 0;
         }
         // New available space for this record, need to migrate this record to a new page
         insertRecord(fileHandle, recordDescriptor, data, cpy);
-        insertTomb(data_offset, rid.pageNum, rid.slotNum);
-        memmove(data_offset+TOMB_SIZE, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+        fileHandle.readPage(rid.pageNum, pageData);
+        getInfo(pageData, info);
+        insertTomb(data_offset, cpy.pageNum, cpy.slotNum);
+        std::cout << info[DATA_OFFSET] << std::endl;
+//        memmove(data_offset+TOMB_SIZE, data_offset+slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+        shiftRecord(pageData, slot.first, TOMB_SIZE, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+        slot.second = TOMB_SIZE;
+        writeSlotInfo(rid.slotNum, pageData, slot);
         info[DATA_OFFSET] -= oldRecord.size-TOMB_SIZE;
         updateInfo(fileHandle, pageData, rid.pageNum, info);
         fileHandle.writePage(rid.pageNum, pageData);
+
+        delete [] pageData;
+        delete [] info;
         return 0;
+    }
+
+    void RecordBasedFileManager::shiftRecord(char* data, unsigned offset, unsigned size, unsigned shiftOffset, unsigned len){
+        auto data_offset = data+offset;
+        memmove(data_offset+size, data_offset+shiftOffset, len);
+        auto info = new unsigned [PAGE_INFO_NUM];
+        getInfo(data, info);
+        for(int i=0;i<info[SLOT_NUM];i++){
+            auto slot = getSlotInfo(i, data);
+            if(slot.first==5000)continue;
+            if(slot.first>offset){
+                slot.first-=shiftOffset-size;
+                writeSlotInfo(i, data, slot);
+            }
+        }
     }
 
     void RecordBasedFileManager::insertTomb(char* data, unsigned pageNum, unsigned short slotNum){
