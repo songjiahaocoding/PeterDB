@@ -365,7 +365,38 @@ namespace PeterDB {
 
     RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                              const RID &rid, const std::string &attributeName, void *data) {
-        return -1;
+        short id;
+        for(id=0;id<recordDescriptor.size();id++){
+            if(!recordDescriptor.at(id).name.compare(attributeName)){
+                break;
+            }
+        }
+        char* pageData = new char [PAGE_SIZE];
+        fileHandle.readPage(rid.pageNum, pageData);
+        auto slot = getSlotInfo(rid.slotNum, pageData);
+        char* recordData = new char [slot.second];
+//        fetchRecord(slot.first, slot.second, recordData, pageData);
+        memcpy(recordData, pageData+slot.first, slot.second);
+        short int flag_size = std::ceil( static_cast<double>(recordDescriptor.size()) /CHAR_BIT);
+        auto indexPos = recordData+FIELD_NUM_SIZE+flag_size;
+        auto attrIndexPos = indexPos+INDEX_SIZE*id;
+        int offset;
+        memcpy(&offset, attrIndexPos, INDEX_SIZE);
+        auto attrPos = recordData+offset;
+        switch (recordDescriptor.at(id).type) {
+            case TypeInt:
+                memcpy(data, attrPos, sizeof(int));
+                break;
+            case TypeReal:
+                memcpy(data, attrPos, sizeof(float));
+                break;
+            case TypeVarChar:
+                int size;
+                memcpy(&size, attrPos, sizeof(int));
+                memcpy(data, attrPos+sizeof(int), size);
+                break;
+        }
+        return 0;
     }
 
     RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
@@ -432,7 +463,7 @@ namespace PeterDB {
     void Record::buildRecord(const std::vector<Attribute> &descriptor, const void* value) {
         short int flag_size = std::ceil( static_cast<double>(descriptor.size()) /CHAR_BIT);
         char* ptr = (char*)value+flag_size;
-        short int offset = sizeof(short int)+flag_size + INDEX_SIZE * fieldNum;
+        short int offset = FIELD_NUM_SIZE+flag_size + INDEX_SIZE * fieldNum;
         short int totalSize = 0;
         index = new short [fieldNum];
         memset(index, 0, sizeof(short)*fieldNum);
@@ -448,9 +479,9 @@ namespace PeterDB {
             }
             else if (descriptor[i].type == TypeVarChar && !isNull(i)) {
                 int varCharSize;
-                memcpy(&varCharSize, ptr, sizeof(uint32_t));
-                ptr +=  (sizeof(int) + varCharSize);
-                totalSize += (sizeof(int) + varCharSize);
+                memcpy(&varCharSize, ptr, sizeof(int));
+                ptr +=  sizeof(int) + varCharSize;
+                totalSize += sizeof(int) + varCharSize;
             }
         }
 
@@ -459,8 +490,8 @@ namespace PeterDB {
         memset(data, 0, sizeof(char)*size);
         short int recordOffset = 0;
         // # of fields
-        memcpy(data+recordOffset, &fieldNum, INDEX_SIZE);
-        recordOffset += INDEX_SIZE;
+        memcpy(data+recordOffset, &fieldNum, FIELD_NUM_SIZE);
+        recordOffset += FIELD_NUM_SIZE;
 
         // Indicator
         memcpy(data + recordOffset, value, flag_size);

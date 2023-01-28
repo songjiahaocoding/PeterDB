@@ -43,7 +43,7 @@ namespace PeterDB {
         NE_OP,      // !=
         NO_OP       // no condition
     } CompOp;
-
+    #define FIELD_NUM_SIZE sizeof(short)
     #define INDEX_SIZE 2
     class Record {
     public:

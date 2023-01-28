@@ -183,7 +183,5 @@ namespace PeterDB {
     }
 
     infoPage::~infoPage() = default;
-
-
 } // namespace PeterDB
 

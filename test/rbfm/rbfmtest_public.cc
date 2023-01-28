@@ -2,6 +2,9 @@
 #include "test/utils/rbfm_test_utils.h"
 
 namespace PeterDBTesting {
+    TEST_F(RBFM_Test, cleanup){
+        std::cout << "Clean up" << std::endl;
+    }
 
     TEST_F(RBFM_Test, insert_and_read_a_record) {
         // Functions tested
@@ -399,6 +402,33 @@ namespace PeterDBTesting {
         // verify the short record has been deleted
         ASSERT_NE(rbfm.readRecord(fileHandle, recordDescriptor, shortRID, outBuffer), success)
                                     << "Read a deleted record should not success.";
+    }
+
+    TEST_F(RBFM_Test, read_attribute) {
+        PeterDB::RID rid;
+        size_t recordSize = 0;
+        inBuffer = malloc(100);
+        outBuffer = malloc(100);
+
+        std::vector<PeterDB::Attribute> recordDescriptor;
+        createRecordDescriptor(recordDescriptor);
+
+        // Initialize a NULL field indicator
+        nullsIndicator = initializeNullFieldsIndicator(recordDescriptor);
+
+        // Insert a inBuffer into a file and print the inBuffer
+        prepareRecord((int) (int) recordDescriptor.size(), nullsIndicator, 8, "Anteater", 25, 177.8, 6200, inBuffer, recordSize);
+
+
+        ASSERT_EQ(rbfm.insertRecord(fileHandle, recordDescriptor, inBuffer, rid), success)
+                                    << "Inserting a inBuffer should succeed.";
+
+        rbfm.readAttribute(fileHandle, recordDescriptor, rid, "EmpName", outBuffer);
+        EXPECT_STREQ((char*)outBuffer, "Anteater");
+        rbfm.readAttribute(fileHandle, recordDescriptor, rid, "Age", outBuffer);
+        ASSERT_EQ(*(int*)outBuffer, 25);
+        rbfm.readAttribute(fileHandle, recordDescriptor, rid, "Height", outBuffer);
+        ASSERT_FLOAT_EQ(*(float *)outBuffer, 177.8);
     }
 
     TEST_F(RBFM_Test_2, varchar_compact_size) {
@@ -933,5 +963,4 @@ namespace PeterDBTesting {
             ASSERT_EQ(memcmp(inBuffer, outBuffer, size), 0) << "Reading unmatched data.";
         }
     }
-
 }// namespace PeterDBTesting
