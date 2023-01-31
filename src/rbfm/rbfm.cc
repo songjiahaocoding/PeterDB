@@ -403,6 +403,7 @@ namespace PeterDB {
                                     const std::string &conditionAttribute, const CompOp compOp, const void *value,
                                     const std::vector<std::string> &attributeNames,
                                     RBFM_ScanIterator &rbfm_ScanIterator) {
+        rbfm_ScanIterator.init(fileHandle, recordDescriptor,conditionAttribute, compOp, value, attributeNames);
         return -1;
     }
 
@@ -508,6 +509,55 @@ namespace PeterDB {
     tombStone::tombStone(unsigned int pageNum, unsigned short slotNum) {
         this->pageNum = pageNum;
         this->slotNum = slotNum;
+    }
+
+    RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
+        bool found = false;
+        while(!found){
+            //
+            break;
+        }
+        return 0;
+    }
+
+    RC RBFM_ScanIterator::close() {
+
+        return 0;
+    }
+
+    void RBFM_ScanIterator::init(FileHandle &filehandle, const std::vector<Attribute> &descriptor, const std::string &condition,
+                            const CompOp compOp, const void *value, const std::vector<std::string> &attributeNames) {
+        this->fileHandle = filehandle;
+        this->descriptor = descriptor;
+        this->commOp = compOp;
+        this->attributeNames = attributeNames;
+        this->conditionAttribute = condition;
+
+        this->currentPageNum = 0;
+        this->currentSlotNum = 0;
+
+        for (int i = 0; i < descriptor.size(); ++i) {
+            if(!descriptor.at(i).name.compare(condition)){
+                this->attributeIndex = i;
+                this->attrType = descriptor.at(i).type;
+                break;
+            }
+        }
+
+        switch (this->attrType) {
+            case TypeInt || TypeReal:
+                this->conditionVal = new char [sizeof(float)];
+                memset(this->conditionVal, 0, sizeof(float));
+                memcpy(this->conditionVal, value, sizeof(float));
+                break;
+            case TypeVarChar:
+                unsigned size;
+                memcpy(&size, value, sizeof(unsigned ));
+                this->conditionVal = new char [size+sizeof(unsigned )];
+                memset( this->conditionVal, 0, size+sizeof(unsigned ));
+                memcpy(this->conditionVal, value, size+sizeof(unsigned ));
+                break;
+        }
     }
 }// namespace PeterDB
 

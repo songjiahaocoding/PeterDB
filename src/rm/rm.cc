@@ -15,6 +15,17 @@ namespace PeterDB {
     RelationManager &RelationManager::operator=(const RelationManager &) = default;
 
     RC RelationManager::createCatalog() {
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        rbfm.createFile("tables");
+        rbfm.createFile("columns");
+
+        RID rid;
+        FileHandle fileHandle;
+        rbfm.openFile("tables", fileHandle);
+        // Insert some metadata about the initialization for the tables table
+
+        // The same thing for columns table
+
         return -1;
     }
 
@@ -23,6 +34,8 @@ namespace PeterDB {
     }
 
     RC RelationManager::createTable(const std::string &tableName, const std::vector<Attribute> &attrs) {
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        if(rbfm.createFile(tableName)!=0)return -1;
         return -1;
     }
 

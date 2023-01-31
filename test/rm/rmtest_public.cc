@@ -928,7 +928,6 @@ namespace PeterDBTesting {
 
     }
 
-
     TEST_F(RM_Catalog_Scan_Test_2, read_attributes) {
         // Functions tested
         // 1. Insert 100,000 tuples
