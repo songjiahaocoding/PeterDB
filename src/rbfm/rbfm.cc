@@ -55,10 +55,9 @@ namespace PeterDB {
      * - When the flag is set to 1, it means the corresponding field contains null
      * - The field with null value will not use any space in the data.
      *
-     * - rid: Uniquely identify a record in a file. page_num + slot_num 6 bytes.
-     *
      *  Tombstone: use a pointer and compact the space
      */
+    // Extrem case: the old record is smalller than the size of a tombstone
     RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                             const void *data, RID &rid) {
         if(fileHandle.getNumberOfPages() == 0) {
@@ -97,13 +96,14 @@ namespace PeterDB {
         rid = {num, static_cast<unsigned short>(slotID)};
         // Write the record to page
         memcpy(data+info[DATA_OFFSET], record.data, record.size);
+        memcpy(data+info[DATA_OFFSET]+record.size, &rid, sizeof rid);
         // Write a new slot information
         std::pair<short int ,short int> newSlot;
-        newSlot = {info[DATA_OFFSET], record.size};
+        newSlot = {info[DATA_OFFSET], record.size+sizeof rid};
 
         writeSlotInfo(rid.slotNum, data, newSlot);
         // Update information
-        info[DATA_OFFSET] += record.size;
+        info[DATA_OFFSET] += record.size+sizeof rid;
         // Write back
         memcpy((void*)(data + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM), info, sizeof(unsigned) * PAGE_INFO_NUM);
         // Write to disk
@@ -513,9 +513,48 @@ namespace PeterDB {
 
     RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
         bool found = false;
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
         while(!found){
-            //
-            break;
+            // Initialize data
+            char* pageData = new char [PAGE_SIZE];
+            memset(pageData, 0, PAGE_SIZE);
+            fileHandle.readPage(currentPageNum, pageData);
+            unsigned* info = new unsigned [PAGE_INFO_NUM];
+            rbfm.getInfo(pageData, info);
+            // Judge if the current record match
+            auto slot = rbfm.getSlotInfo(currentSlotNum, pageData);
+            char* recordData = pageData + slot.first;
+            char* attrValue = new char [slot.second];
+            rbfm.readAttribute(fileHandle, descriptor, rid, conditionAttribute, attrValue);
+            if(isMatch(recordData, attrValue)){
+                found = true;
+                // Include a null indicator to the returned data
+                // write to the void* data
+                break;
+            }
+            // Move to the nexxt record
+            // If moved to the last one, break the loop return -1
+            if(moveToNext(fileHandle.getNumberOfPages(), info[SLOT_NUM])==-1) {
+                break;
+            }
+        }
+        if(found){
+            // Write matched record into data
+
+            return 0;
+        } else {
+            return -1;
+        }
+    }
+
+    RC RBFM_ScanIterator::moveToNext(unsigned pageNum, unsigned short slotNum){
+        currentSlotNum++;
+        if(currentSlotNum>=slotNum){
+            currentSlotNum = 0;
+            currentPageNum++;
+            if(currentPageNum>=pageNum){
+                return -1;
+            }
         }
         return 0;
     }
@@ -557,6 +596,72 @@ namespace PeterDB {
                 memset( this->conditionVal, 0, size+sizeof(unsigned ));
                 memcpy(this->conditionVal, value, size+sizeof(unsigned ));
                 break;
+        }
+    }
+
+    bool RBFM_ScanIterator::isMatch(char* record, char* attrValue) {
+        if(commOp == NO_OP)return true;
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        if(rbfm.isTomb(record)){
+            return false;
+        }
+
+        switch (attrType) {
+            case TypeInt:
+            {
+                int condition = *(int*)conditionVal;
+                int val = *(int*)attrValue;
+                switch (commOp) {
+                    case EQ_OP: return val == condition;
+                    case LT_OP: return val < condition;
+                    case LE_OP: return val <= condition;
+                    case GT_OP: return val > condition;
+                    case GE_OP: return val >= condition;
+                    case NE_OP: return val != condition;
+                    default: return false;
+                }
+            }
+            case TypeReal:
+            {
+                float condition = *(float *)conditionVal;
+                float val = *(float *)attrValue;
+                switch (commOp) {
+                    case EQ_OP: return (val-condition)<FLOAT_DIFF;
+                    case LT_OP: return val < condition;
+                    case LE_OP: return val <= condition;
+                    case GT_OP: return val > condition;
+                    case GE_OP: return val >= condition;
+                    case NE_OP: return val != condition;
+                    default: return false;
+                }
+            }
+            case TypeVarChar:
+            {
+                unsigned attrLen;
+                unsigned conditionLen;
+                memcpy(&attrValue, attrValue, sizeof (unsigned));
+                memcpy(&conditionLen, conditionVal, sizeof(unsigned));
+
+                char* condition = new char [conditionLen];
+                char* val = new char [attrLen];
+                memset(condition, 0, conditionLen);
+                memset(attrValue, 0, attrLen);
+                memcpy(condition, conditionVal+sizeof(unsigned), conditionLen);
+                memcpy(val, attrValue+sizeof(unsigned), attrLen);
+
+                switch (commOp) {
+                    case EQ_OP: return val == condition;
+                    case LT_OP: return val <  condition;
+                    case LE_OP: return val <= condition;
+                    case GT_OP: return val >  condition;
+                    case GE_OP: return val >= condition;
+                    case NE_OP: return val != condition;
+                    default: return false;
+                }
+            }
+            default:
+                std::cout<<"Error with the attribute type"<< std::endl;
+                return false;
         }
     }
 }// namespace PeterDB

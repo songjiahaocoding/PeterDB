@@ -77,7 +77,7 @@ namespace PeterDB {
     //    process the data;
     //  }
     //  rbfmScanIterator.close();
-
+    #define FLOAT_DIFF 0.0000001
     class RBFM_ScanIterator {
     public:
         RBFM_ScanIterator() = default;;
@@ -106,6 +106,9 @@ namespace PeterDB {
         unsigned attributeIndex;
         AttrType attrType;
         char* conditionVal;
+
+        RC moveToNext(unsigned int pageNum, unsigned short slotNum);
+        bool isMatch(char *record, char *attrValue);
     };
 
     class RecordBasedFileManager {
@@ -182,6 +185,12 @@ namespace PeterDB {
                 const std::vector<std::string> &attributeNames, // a list of projected attributes
                 RBFM_ScanIterator &rbfm_ScanIterator);
 
+        void getInfo(char *data, unsigned int *info);
+
+        bool isTomb(char *data);
+
+        std::pair<short, short> getSlotInfo(unsigned short slotNum, const char *data);
+
     protected:
         RecordBasedFileManager();                                                   // Prevent construction
         ~RecordBasedFileManager();                                                  // Prevent unwanted destruction
@@ -189,15 +198,9 @@ namespace PeterDB {
         RecordBasedFileManager &operator=(const RecordBasedFileManager &);          // Prevent assignment
         unsigned getNextAvailablePageNum(short int insertSize, PeterDB::FileHandle &handle, unsigned num);
 
-        std::pair<short, short> getSlotInfo(unsigned short slotNum, const char *data);
-
         void updateInfo(FileHandle& fileHandle, char *data, unsigned pageNum, unsigned* info);
 
-        bool isTomb(char *data);
-
         short getDeletedSlot(char *data);
-
-        void getInfo(char *data, unsigned int *info);
 
         RID getPointRID(char *data_offset);
 
