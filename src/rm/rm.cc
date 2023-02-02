@@ -21,16 +21,64 @@ namespace PeterDB {
 
         RID rid;
         FileHandle fileHandle;
-        rbfm.openFile("tables", fileHandle);
         // Insert some metadata about the initialization for the tables table
+        rbfm.openFile("tables", fileHandle);
+        char* tuple = new char [TABLES_TUPLE_SIZE];
+        memset(tuple, 0, TABLES_TUPLE_SIZE);
+        buildTablesTuple(1, "Tables", "tables", tuple);
+        rbfm.insertRecord(fileHandle, Tables_Descriptor, tuple, rid);
+        memset(tuple, 0, TABLES_TUPLE_SIZE);
+        buildTablesTuple(2, "Columns", "columns", tuple);
+        rbfm.insertRecord(fileHandle, Tables_Descriptor, tuple, rid);
+        memset(tuple, 0, TABLES_TUPLE_SIZE);
+        delete [] tuple;
 
         // The same thing for columns table
+        rbfm.openFile("columns", fileHandle);
+        tuple = new char [COLUMNS_TUPLE_SIZE];
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+        buildColumnsTuple(1, {"table-id", TypeInt, 4}, 1, tuple);
+        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
+        buildColumnsTuple(1, {"table-name", TypeVarChar, 50}, 2, tuple);
+        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+
+        buildColumnsTuple(1, {"file-name", TypeVarChar, 50}, 3, tuple);
+        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+
+        buildColumnsTuple(2, {"table-id", TypeInt, 4}, 1, tuple);
+        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+
+        buildColumnsTuple(2, {"column-name", TypeVarChar, 50}, 2, tuple);
+        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+
+        buildColumnsTuple(2, {"column-type", TypeInt, 4}, 3, tuple);
+        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+
+        buildColumnsTuple(2, {"column-length", TypeInt, 4}, 4, tuple);
+        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+
+        buildColumnsTuple(2, {"column-position", TypeInt, 4}, 5, tuple);
+        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+
+        fileHandle.closeFile();
+        delete [] tuple;
         return -1;
     }
 
     RC RelationManager::deleteCatalog() {
-        return -1;
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        rbfm.destroyFile("tables");
+        rbfm.destroyFile("columns");
+        return 0;
     }
 
     RC RelationManager::createTable(const std::string &tableName, const std::vector<Attribute> &attrs) {
@@ -81,10 +129,6 @@ namespace PeterDB {
         return -1;
     }
 
-    RM_ScanIterator::RM_ScanIterator() = default;
-
-    RM_ScanIterator::~RM_ScanIterator() = default;
-
     RC RM_ScanIterator::getNextTuple(RID &rid, void *data) {
         return rbfmScanIterator.getNextRecord(rid, data);
     }
@@ -121,6 +165,38 @@ namespace PeterDB {
         return -1;
     }
 
+    void RelationManager::buildTablesTuple(int id, std::string tableName, std::string fileName, char *tuple) {
+        unsigned short tableNameSize = tableName.size();
+        unsigned short fileNameSize = fileName.size();
+        memcpy(tuple, &id, sizeof(int));
+        tuple+=sizeof(int);
+        memcpy(tuple, &tableNameSize, sizeof(short));
+        tuple+=sizeof(short);
+        memcpy(tuple, tableName.c_str(), tableNameSize);
+        tuple+=tableNameSize;
+        memcpy(tuple, &fileNameSize, sizeof(short));
+        tuple+=sizeof(short);
+        memcpy(tuple, fileName.c_str(), fileNameSize);
+    }
+
+    void RelationManager::buildColumnsTuple(int tableId, Attribute attribute, int columnPos, char* tuple){
+        AttrType columnType = attribute.type;
+        unsigned columnLength = attribute.length;
+        unsigned short columnNameSize =  attribute.name.size();
+
+        memcpy(tuple, &tableId, sizeof(int));
+        tuple+=sizeof(int);
+        memcpy(tuple, &columnNameSize, sizeof(short));
+        tuple+=sizeof(short);
+        memcpy(tuple, attribute.name.c_str(), columnNameSize);
+        tuple+=columnNameSize;
+        memcpy(tuple, &columnType, sizeof(AttrType));
+        tuple+=sizeof(AttrType);
+        memcpy(tuple, &columnLength, sizeof(unsigned));
+        tuple+=sizeof(unsigned);
+        memcpy(tuple, &columnPos, sizeof(int));
+    }
+
 
     RM_IndexScanIterator::RM_IndexScanIterator() = default;
 
@@ -133,5 +209,6 @@ namespace PeterDB {
     RC RM_IndexScanIterator::close(){
         return -1;
     }
+
 
 } // namespace PeterDB

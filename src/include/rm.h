@@ -7,21 +7,64 @@
 #include "src/include/rbfm.h"
 
 namespace PeterDB {
-#define RM_EOF (-1)  // end of a scan operator
+    #define RM_EOF (-1)  // end of a scan operator
+    const std::vector<Attribute> Tables_Descriptor = {
+            {
+                    "ID",
+                    TypeInt,
+                    (AttrLength)4
+            },
+            {
+                    "tableName",
+                    TypeVarChar,
+                    (AttrLength)50
+            },
+            {
+                    "fileName",
+                    TypeVarChar,
+                    (AttrLength) 50
+            }
+    };
 
+    const std::vector<Attribute> Columns_Descriptor = {
+            {
+                    "tableId",
+                    TypeInt,
+                    (AttrLength) 4
+            },
+            {
+                    "columnName",
+                    TypeVarChar,
+                    (AttrLength) 50
+            },
+            {
+                    "columnType",
+                    TypeInt,
+                    (AttrLength) 4
+            },
+            {
+                    "columnLength",
+                    TypeInt,
+                    (AttrLength) 4
+            },
+            {
+                    "columnPosition",
+                    TypeInt,
+                    (AttrLength) 4
+            }
+    };
     // RM_ScanIterator is an iterator to go through tuples
     class RM_ScanIterator {
     public:
-        RM_ScanIterator();
+        RM_ScanIterator() = default;
 
-        ~RM_ScanIterator();
+        ~RM_ScanIterator() = default;
 
         // "data" follows the same format as RelationManager::insertTuple()
         RC getNextTuple(RID &rid, void *data);
 
         RC close();
 
-    private:
         RBFM_ScanIterator rbfmScanIterator;
     };
 
@@ -36,6 +79,8 @@ namespace PeterDB {
         RC close();                              // Terminate index scan
     };
 
+    #define TABLES_TUPLE_SIZE 108
+    #define COLUMNS_TUPLE_SIZE 68
     // Relation Manager
     class RelationManager {
     public:
@@ -98,6 +143,9 @@ namespace PeterDB {
         ~RelationManager();                                                 // Prevent unwanted destruction
         RelationManager(const RelationManager &);                           // Prevent construction by copying
         RelationManager &operator=(const RelationManager &);                // Prevent assignment
+        void buildTablesTuple(int i, std::string tableName, std::string fileName, char *tuple);
+
+        void buildColumnsTuple(int tableId, Attribute attribute, int columnPos, char *tuple);
     };
 
 } // namespace PeterDB
