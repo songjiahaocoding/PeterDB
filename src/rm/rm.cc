@@ -16,21 +16,23 @@ namespace PeterDB {
 
     RC RelationManager::createCatalog() {
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
-        rbfm.createFile("tables");
-        rbfm.createFile("columns");
+        rbfm.createFile("Tables");
+        rbfm.createFile("Columns");
+        rbfm.createFile("Variables");
 
         RID rid;
         FileHandle fileHandle;
         // Insert some metadata about the initialization for the tables table
-        rbfm.openFile("tables", fileHandle);
+        rbfm.openFile("Tables", fileHandle);
         char* tuple = new char [TABLES_TUPLE_SIZE];
         memset(tuple, 0, TABLES_TUPLE_SIZE);
-        buildTablesTuple(1, "Tables", "tables", tuple);
+        buildTablesTuple(1, "Tables", "Tables", tuple);
         rbfm.insertRecord(fileHandle, Tables_Descriptor, tuple, rid);
         memset(tuple, 0, TABLES_TUPLE_SIZE);
-        buildTablesTuple(2, "Columns", "columns", tuple);
+        buildTablesTuple(2, "Columns", "Columns", tuple);
         rbfm.insertRecord(fileHandle, Tables_Descriptor, tuple, rid);
         memset(tuple, 0, TABLES_TUPLE_SIZE);
+        fileHandle.closeFile();
         delete [] tuple;
 
         // The same thing for columns table
@@ -68,26 +70,60 @@ namespace PeterDB {
         buildColumnsTuple(2, {"column-position", TypeInt, 4}, 5, tuple);
         rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+        fileHandle.closeFile();
+        // Initialize variable table
+        char* countData = new char [sizeof(int)+1];
+        int initCount = 3;
+        memset(countData, 0, sizeof(int));
+        memcpy(countData+1, &initCount, sizeof(int));
+        rbfm.openFile("Variables",fileHandle);
+        rbfm.insertRecord(fileHandle, {{"count", TypeInt, 4}}, countData, rid);
 
         fileHandle.closeFile();
+        delete [] countData;
         delete [] tuple;
-        return -1;
+        return 0;
     }
 
     RC RelationManager::deleteCatalog() {
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
-        rbfm.destroyFile("tables");
-        rbfm.destroyFile("columns");
+        rbfm.destroyFile("Tables");
+        rbfm.destroyFile("Columns");
         return 0;
     }
 
     RC RelationManager::createTable(const std::string &tableName, const std::vector<Attribute> &attrs) {
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        FileHandle fileHandle;
+        RID rid;
+        // Insert Tables data
+        if(rbfm.openFile("Tables", fileHandle)!=0)return -1;
         if(rbfm.createFile(tableName)!=0)return -1;
-        return -1;
+        char* tuple = new char [TABLES_TUPLE_SIZE];
+        int tableID = getTableCount() + 1;
+
+        buildTablesTuple(tableID, tableName, tableName, tuple);
+        rbfm.insertRecord(fileHandle, Tables_Descriptor, tuple, rid);
+        fileHandle.closeFile();
+        // Insert Columns data
+        delete [] tuple;
+        tuple = new char [COLUMNS_TUPLE_SIZE];
+        rbfm.openFile("Columns", fileHandle);
+        for(int i = 0 ; i < attrs.size() ; i++) {
+            memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+            buildColumnsTuple(tableID, attrs[i], i+1, tuple);
+            rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        }
+        fileHandle.closeFile();
+        delete [] tuple;
+        this->addTableCount();
+        return 0;
     }
 
     RC RelationManager::deleteTable(const std::string &tableName) {
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+
+        if(rbfm.destroyFile(tableName)==0)return 0;
         return -1;
     }
 
@@ -130,7 +166,8 @@ namespace PeterDB {
     }
 
     RC RM_ScanIterator::getNextTuple(RID &rid, void *data) {
-        return rbfmScanIterator.getNextRecord(rid, data);
+        //return rbfmScanIterator.getNextRecord(rid, data);
+        return -1;
     }
 
     RC RM_ScanIterator::close() { return -1; }
@@ -166,16 +203,20 @@ namespace PeterDB {
     }
 
     void RelationManager::buildTablesTuple(int id, std::string tableName, std::string fileName, char *tuple) {
-        unsigned short tableNameSize = tableName.size();
-        unsigned short fileNameSize = fileName.size();
+        unsigned tableNameSize = tableName.size();
+        unsigned fileNameSize = fileName.size();
+
+        char nullpart = 0;
+        memcpy(tuple, &nullpart, 1);
+        tuple+=1;
         memcpy(tuple, &id, sizeof(int));
         tuple+=sizeof(int);
-        memcpy(tuple, &tableNameSize, sizeof(short));
-        tuple+=sizeof(short);
+        memcpy(tuple, &tableNameSize, sizeof(int));
+        tuple+=sizeof(int);
         memcpy(tuple, tableName.c_str(), tableNameSize);
         tuple+=tableNameSize;
-        memcpy(tuple, &fileNameSize, sizeof(short));
-        tuple+=sizeof(short);
+        memcpy(tuple, &fileNameSize, sizeof(int));
+        tuple+=sizeof(int);
         memcpy(tuple, fileName.c_str(), fileNameSize);
     }
 
@@ -184,10 +225,13 @@ namespace PeterDB {
         unsigned columnLength = attribute.length;
         unsigned short columnNameSize =  attribute.name.size();
 
+        char* nullpart = 0;
+        memcpy(tuple, &nullpart, 1);
+        tuple+=1;
         memcpy(tuple, &tableId, sizeof(int));
         tuple+=sizeof(int);
-        memcpy(tuple, &columnNameSize, sizeof(short));
-        tuple+=sizeof(short);
+        memcpy(tuple, &columnNameSize, sizeof(int));
+        tuple+=sizeof(int);
         memcpy(tuple, attribute.name.c_str(), columnNameSize);
         tuple+=columnNameSize;
         memcpy(tuple, &columnType, sizeof(AttrType));
@@ -210,5 +254,28 @@ namespace PeterDB {
         return -1;
     }
 
+    void RelationManager::addTableCount() {
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        FileHandle varFile;
+        int count = getTableCount() + 1;
+        char* countData = new char [sizeof(int)+1];
+        memset(countData, 0, sizeof(int)+1);
+        memcpy(countData+1, &count, sizeof(int));
+        rbfm.openFile("Variables",varFile);
+        rbfm.updateRecord(varFile, {{"count", TypeInt, 4}}, countData, {0,0});
+        varFile.closeFile();
+    }
 
+    int RelationManager::getTableCount() {
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        FileHandle fileHandle;
+        int count = 0;
+        char* countData = new char [sizeof(int)+1];
+        rbfm.openFile("Variables",fileHandle);
+        rbfm.readRecord(fileHandle, {{"count", TypeInt, 4}}, {0,0}, countData);
+        fileHandle.closeFile();
+        memcpy(&count, countData+1, sizeof(int));
+        delete[] countData;
+        return count;
+    }
 } // namespace PeterDB

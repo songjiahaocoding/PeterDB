@@ -22,7 +22,7 @@ namespace PeterDB {
             {
                     "fileName",
                     TypeVarChar,
-                    (AttrLength) 50
+                    (AttrLength)50
             }
     };
 
@@ -65,7 +65,7 @@ namespace PeterDB {
 
         RC close();
 
-        RBFM_ScanIterator rbfmScanIterator;
+//        RBFM_ScanIterator rbfmScanIterator;
     };
 
     // RM_IndexScanIterator is an iterator to go through index entries
@@ -79,8 +79,8 @@ namespace PeterDB {
         RC close();                              // Terminate index scan
     };
 
-    #define TABLES_TUPLE_SIZE 108
-    #define COLUMNS_TUPLE_SIZE 68
+    #define TABLES_TUPLE_SIZE 50*2+4*3+1
+    #define COLUMNS_TUPLE_SIZE 50+4*5+1
     // Relation Manager
     class RelationManager {
     public:
@@ -146,6 +146,10 @@ namespace PeterDB {
         void buildTablesTuple(int i, std::string tableName, std::string fileName, char *tuple);
 
         void buildColumnsTuple(int tableId, Attribute attribute, int columnPos, char *tuple);
+
+        int getTableCount();
+
+        void addTableCount();
     };
 
 } // namespace PeterDB
