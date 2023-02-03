@@ -215,6 +215,8 @@ namespace PeterDB {
         void
         writeUpdateInfo(FileHandle &fileHandle, unsigned int *info, std::pair<short, short> slot, unsigned int size,
                         unsigned int oldSize, const RID &rid, char *pageData);
+
+        unsigned short getSlotNum(char *pageData);
     };
 
     #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)

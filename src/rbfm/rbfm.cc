@@ -61,7 +61,6 @@ namespace PeterDB {
     RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                             const void *data, RID &rid) {
         if(fileHandle.getNumberOfPages() == 0) {
-            // Insert a new page
             appendNewPage(fileHandle);
         }
 
@@ -73,27 +72,34 @@ namespace PeterDB {
          */
         char* pageData = new char [PAGE_SIZE];
         memset((void*)pageData, 0, PAGE_SIZE);
-
         unsigned lastPageNum = fileHandle.getNumberOfPages()-1;
         unsigned pageNum = getNextAvailablePageNum(record.size + SLOT_SIZE, fileHandle, lastPageNum);
         fileHandle.readPage(pageNum, (void *) pageData);
+        unsigned short slotID = getSlotNum(pageData);
+        rid.pageNum = pageNum;
+        rid.slotNum = slotID;
         writeRecord(record, fileHandle, pageNum, rid, pageData);
 
         delete [] pageData;
-
         return 0;
     }
 
-    void RecordBasedFileManager::writeRecord(const Record& record, FileHandle &handle, unsigned num, RID &rid, char* data) {
+    unsigned short RecordBasedFileManager::getSlotNum(char* pageData){
         auto* info = new unsigned [PAGE_INFO_NUM];
-        getInfo(data, info);
-        auto slotID = getDeletedSlot(data);
+        getInfo(pageData, info);
+        auto slotID = getDeletedSlot(pageData);
         if(slotID<0){
             slotID = info[SLOT_NUM];
             info[SLOT_NUM]++;
             info[INFO_OFFSET] += SLOT_SIZE;
         }
-        rid = {num, static_cast<unsigned short>(slotID)};
+        memcpy((void*)(pageData + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM), info, sizeof(unsigned) * PAGE_INFO_NUM);
+        return slotID;
+    }
+
+    void RecordBasedFileManager::writeRecord(const Record& record, FileHandle &handle, unsigned num, RID &rid, char* data) {
+        auto* info = new unsigned [PAGE_INFO_NUM];
+        getInfo(data, info);
         // Write the record to page
         memcpy(data+info[DATA_OFFSET], record.data, record.size);
         memcpy(data+info[DATA_OFFSET]+record.size, &rid, sizeof rid);
@@ -183,7 +189,7 @@ namespace PeterDB {
         char* dataPtr = flagPtr + flag_size + INDEX_SIZE*fieldNum;
 
         memcpy(data, flagPtr, flag_size);
-        memcpy((char*)data+flag_size, dataPtr, recordSize-flag_size-INDEX_SIZE*fieldNum-sizeof(short));
+        memcpy((char*)data+flag_size, dataPtr, recordSize-flag_size-INDEX_SIZE*fieldNum-sizeof(short)-sizeof(RID));
     }
 
     RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescriptor, const void *data,
@@ -294,7 +300,7 @@ namespace PeterDB {
 
         if(record.size<oldRecord.size){
             memcpy(data_offset, record.data, record.size);
-            shiftRecord(pageData, slot.first, record.size, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+            shiftRecord(pageData, slot.first, record.size+sizeof(RID), slot.second, info[DATA_OFFSET]-slot.first-slot.second);
             writeUpdateInfo(fileHandle, info, slot, record.size, oldRecord.size, rid, pageData);
             delete [] pageData;
             delete [] info;
@@ -309,7 +315,13 @@ namespace PeterDB {
             return 0;
         }
         // New available space for this record, need to migrate this record to a new page
-        insertRecord(fileHandle, recordDescriptor, data, cpy);
+        // insertRecord(fileHandle, recordDescriptor, data, cpy);
+        unsigned lastPageNum = fileHandle.getNumberOfPages()-1;
+        cpy.pageNum = getNextAvailablePageNum(record.size + SLOT_SIZE, fileHandle, lastPageNum);
+        memset(pageData, 0, PAGE_SIZE);
+        fileHandle.readPage(cpy.pageNum, pageData);
+        cpy.slotNum = getSlotNum(pageData);
+        writeRecord(record, fileHandle, cpy.pageNum, cpy, pageData);
         fileHandle.readPage(rid.pageNum, pageData);
         getInfo(pageData, info);
         insertTomb(data_offset, cpy.pageNum, cpy.slotNum);
