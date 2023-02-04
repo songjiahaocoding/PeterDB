@@ -377,24 +377,13 @@ namespace PeterDB {
 
     RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                              const RID &rid, const std::string &attributeName, void *data) {
-        short id;
-        for(id=0;id<recordDescriptor.size();id++){
-            if(!recordDescriptor.at(id).name.compare(attributeName)){
-                break;
-            }
-        }
+        short id = getAttrID(recordDescriptor, attributeName);
         char* pageData = new char [PAGE_SIZE];
         fileHandle.readPage(rid.pageNum, pageData);
         auto slot = getSlotInfo(rid.slotNum, pageData);
         char* recordData = new char [slot.second];
-//        fetchRecord(slot.first, slot.second, recordData, pageData);
         memcpy(recordData, pageData+slot.first, slot.second);
-        short int flag_size = std::ceil( static_cast<double>(recordDescriptor.size()) /CHAR_BIT);
-        auto indexPos = recordData+FIELD_NUM_SIZE+flag_size;
-        auto attrIndexPos = indexPos+INDEX_SIZE*id;
-        int offset;
-        memcpy(&offset, attrIndexPos, INDEX_SIZE);
-        auto attrPos = recordData+offset;
+        auto attrPos = getAttrPos(recordDescriptor, recordData, id);
         switch (recordDescriptor.at(id).type) {
             case TypeInt:
                 memcpy(data, attrPos, sizeof(int));
@@ -409,6 +398,25 @@ namespace PeterDB {
                 break;
         }
         return 0;
+    }
+
+    unsigned short RecordBasedFileManager::getAttrID(const std::vector<Attribute> &recordDescriptor, const std::string &attributeName){
+        unsigned short id;
+        for(id=0;id<recordDescriptor.size();id++){
+            if(!recordDescriptor.at(id).name.compare(attributeName)){
+                break;
+            }
+        }
+        return id;
+    }
+
+    char* RecordBasedFileManager::getAttrPos(const std::vector<Attribute> &recordDescriptor, char* recordData, short id){
+        short int flag_size = std::ceil( static_cast<double>(recordDescriptor.size()) /CHAR_BIT);
+        auto indexPos = recordData+FIELD_NUM_SIZE+flag_size;
+        auto attrIndexPos = indexPos+INDEX_SIZE*id;
+        int offset;
+        memcpy(&offset, attrIndexPos, INDEX_SIZE);
+        return recordData+offset;
     }
 
     RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
@@ -523,12 +531,33 @@ namespace PeterDB {
         this->slotNum = slotNum;
     }
 
+     void RBFM_ScanIterator::setAttrNull(void *src, ushort attrNum, bool isNull) {
+        unsigned bytes = 0;
+        unsigned pos = 0;
+        getByteOffset(attrNum, bytes, pos);
+        setBit(*((char *) src + bytes), isNull, pos);
+    }
+
+    void RBFM_ScanIterator::setBit(char &src, bool value, unsigned offset) {
+        if (value) {
+            src |= 1u << offset;
+        } else {
+            src &= ~(1u << offset);
+        }
+    }
+
+    void RBFM_ScanIterator::getByteOffset(unsigned pos, unsigned &bytes, unsigned &offset) {
+        bytes = pos / 8;
+
+        offset = 7 - pos % 8;
+    }
+
     RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
         bool found = false;
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        char* pageData = new char [PAGE_SIZE];
         while(!found){
             // Initialize data
-            char* pageData = new char [PAGE_SIZE];
             memset(pageData, 0, PAGE_SIZE);
             fileHandle.readPage(currentPageNum, pageData);
             unsigned* info = new unsigned [PAGE_INFO_NUM];
@@ -540,23 +569,49 @@ namespace PeterDB {
             rbfm.readAttribute(fileHandle, descriptor, rid, conditionAttribute, attrValue);
             if(isMatch(recordData, attrValue)){
                 found = true;
+                char* res = (char*)data;
+                Record record(descriptor, recordData, rid);
                 // Include a null indicator to the returned data
+                short int flag_size = std::ceil( static_cast<double>(attributeNames.size()) /CHAR_BIT);
+                memset(res, 0, flag_size);
+                res+=flag_size;
                 // write to the void* data
+                for (int i = 0; i < attributeNames.size(); ++i) {
+                    auto id = rbfm.getAttrID(descriptor, attributeNames[i]);
+                    if(record.isNull(id)){
+                        setAttrNull(data, i, true);
+                        continue;
+                    }
+                    auto attrPos = rbfm.getAttrPos(descriptor, recordData, id);
+                    int attrSize = 4;
+                    if(descriptor[id].type==TypeVarChar){
+                        memcpy(&attrSize, attrPos, sizeof(int));
+                        memcpy(res, &attrSize, sizeof(int));
+                        attrPos += sizeof(int);
+                        res += sizeof(int);
+                    }
+                    memcpy(res, attrPos, attrSize);
+                    res += attrSize;
+                }
+                delete [] info;
+                delete [] attrValue;
                 break;
             }
             // Move to the nexxt record
             // If moved to the last one, break the loop return -1
             if(moveToNext(fileHandle.getNumberOfPages(), info[SLOT_NUM])==-1) {
+                delete [] info;
+                delete [] attrValue;
                 break;
             }
+            delete [] info;
+            delete [] attrValue;
         }
+        delete [] pageData;
         if(found){
-            // Write matched record into data
-
             return 0;
-        } else {
-            return -1;
         }
+        return -1;
     }
 
     RC RBFM_ScanIterator::moveToNext(unsigned pageNum, unsigned short slotNum){

@@ -109,6 +109,12 @@ namespace PeterDB {
 
         RC moveToNext(unsigned int pageNum, unsigned short slotNum);
         bool isMatch(char *record, char *attrValue);
+
+        void setAttrNull(void *src, ushort attrNum, bool isNull);
+
+        void setBit(char &src, bool value, unsigned int offset);
+
+        void getByteOffset(unsigned int pos, unsigned int &bytes, unsigned int &offset);
     };
 
     class RecordBasedFileManager {
@@ -191,6 +197,10 @@ namespace PeterDB {
 
         std::pair<short, short> getSlotInfo(unsigned short slotNum, const char *data);
 
+        unsigned short getAttrID(const std::vector<Attribute> &recordDescriptor, const std::string &attributeName);
+
+        char *getAttrPos(const std::vector<Attribute> &recordDescriptor, char *recordData, short id);
+
     protected:
         RecordBasedFileManager();                                                   // Prevent construction
         ~RecordBasedFileManager();                                                  // Prevent unwanted destruction
@@ -217,6 +227,7 @@ namespace PeterDB {
                         unsigned int oldSize, const RID &rid, char *pageData);
 
         unsigned short getSlotNum(char *pageData);
+
     };
 
     #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
