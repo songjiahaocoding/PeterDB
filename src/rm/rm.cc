@@ -1,4 +1,5 @@
 #include "src/include/rm.h"
+#include <cstring>
 
 namespace PeterDB {
     RelationManager &RelationManager::instance() {
@@ -270,15 +271,28 @@ namespace PeterDB {
                              const void *value,
                              const std::vector<std::string> &attributeNames,
                              RM_ScanIterator &rm_ScanIterator) {
-        return -1;
+        RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+        std::vector<Attribute> attrs;
+        this->getAttributes(tableName,attrs);
+
+        RC rc;
+        FileHandle fileHandle;
+        rc = rbfm.openFile(tableName, fileHandle);
+        if( rc != 0) {
+            return -1;
+        }
+
+        rc = rbfm.scan(fileHandle, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator);
+        return rc;
     }
 
     RC RM_ScanIterator::getNextTuple(RID &rid, void *data) {
-        //return rbfmScanIterator.getNextRecord(rid, data);
-        return -1;
+        return rbfmScanIterator.getNextRecord(rid, data);
     }
 
-    RC RM_ScanIterator::close() { return -1; }
+    RC RM_ScanIterator::close() {
+        return rbfmScanIterator.close();
+    }
 
     // Extra credit work
     RC RelationManager::dropAttribute(const std::string &tableName, const std::string &attributeName) {
