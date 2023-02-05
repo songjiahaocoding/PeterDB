@@ -228,6 +228,7 @@ namespace PeterDB {
             fileHandle.closeFile();
             return 0;
         }
+        return -1;
     }
 
     RC RelationManager::readTuple(const std::string &tableName, const RID &rid, void *data) {
