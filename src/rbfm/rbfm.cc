@@ -424,7 +424,7 @@ namespace PeterDB {
                                     const std::vector<std::string> &attributeNames,
                                     RBFM_ScanIterator &rbfm_ScanIterator) {
         rbfm_ScanIterator.init(fileHandle, recordDescriptor,conditionAttribute, compOp, value, attributeNames);
-        return -1;
+        return 0;
     }
 
     unsigned RecordBasedFileManager::getNextAvailablePageNum(short int insertSize, FileHandle &handle, unsigned int startingNum) {
@@ -631,7 +631,8 @@ namespace PeterDB {
     }
 
     RC RBFM_ScanIterator::close() {
-
+        fileHandle->closeFile();
+        delete [] conditionVal;
         return 0;
     }
 
