@@ -183,24 +183,71 @@ namespace PeterDB {
     }
 
     RC RelationManager::insertTuple(const std::string &tableName, const void *data, RID &rid) {
+        RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+        FileHandle fileHandle;
+        if( tableName == "Tables" || tableName == "Columns") {
+            return -1;
+        }
 
+        std::vector<Attribute> attrs;
+        getAttributes(tableName,attrs);
+        if (rbfm.openFile(tableName, fileHandle) == 0) {
+            rbfm.insertRecord(fileHandle, attrs, data, rid);
+            fileHandle.closeFile();
+            return 0;
+        }
         return -1;
     }
 
     RC RelationManager::deleteTuple(const std::string &tableName, const RID &rid) {
+        RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+        FileHandle fileHandle;
+        std::vector<Attribute> attrs;
+        getAttributes(tableName,attrs);
+        if (rbfm.openFile(tableName, fileHandle) == 0) {
+            if(rbfm.deleteRecord(fileHandle, attrs, rid) != 0) {
+                return -1;
+            }
+            fileHandle.closeFile();
+            return 0;
+        }
         return -1;
     }
 
     RC RelationManager::updateTuple(const std::string &tableName, const void *data, const RID &rid) {
-        return -1;
+        RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+        FileHandle fileHandle;
+        std::vector<Attribute> attrs;
+        getAttributes(tableName,attrs);
+
+        if (rbfm.openFile(tableName, fileHandle) == 0) {
+            if(rbfm.updateRecord(fileHandle, attrs, data, rid) != 0) {
+                return -1;
+            }
+            fileHandle.closeFile();
+            return 0;
+        }
     }
 
     RC RelationManager::readTuple(const std::string &tableName, const RID &rid, void *data) {
-        return -1;
+        RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+        FileHandle fileHandle;
+        std::vector<Attribute> attrs;
+        getAttributes(tableName,attrs);
+        if (rbfm.openFile(tableName, fileHandle) != 0) {
+            return -1;
+        }
+        if (rbfm.readRecord(fileHandle, attrs, rid, data) != 0 ) {
+            return -1;
+        }
+        fileHandle.closeFile();
+        return 0;
     }
 
     RC RelationManager::printTuple(const std::vector<Attribute> &attrs, const void *data, std::ostream &out) {
-        return -1;
+        RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+        rbfm.printRecord(attrs, data, out);
+        return 0;
     }
 
     RC RelationManager::readAttribute(const std::string &tableName, const RID &rid, const std::string &attributeName,
