@@ -2,6 +2,7 @@
 
 //#include <readline/readline.h>
 //#include <readline/history.h>
+#include <climits>
 #include <fstream>
 
 // Command parsing delimiters
@@ -42,40 +43,40 @@ namespace PeterDB {
 
     CLI::~CLI() = default;
 
-    RC CLI::start() {
-
-        // what do we want from readline?
-        using_history();
-        // auto-complete = TAB
-        rl_bind_key('\t', rl_complete);
-
-        char *input, shell_prompt[100];
-        std::cout << "************************" << std::endl;
-        std::cout << "SecSQL CLI started" << std::endl;
-        std::cout << "Enjoy!" << std::endl;
-        for (;;) {
-
-            // Create prompt string from user name and current working directory.
-            //snprintf(shell_prompt, sizeof(shell_prompt), "%s >>> ", getenv("USER"));
-            snprintf(shell_prompt, sizeof(shell_prompt), ">>> ");
-            // Display prompt and read input (n.b. input must be freed after use)...
-            input = readline(shell_prompt);
-
-            // check for EOF
-            if (!input)
-                break;
-            if ((this->process(std::string(input))) == EXIT_CODE) {
-                free(input);
-                break;
-            }
-            add_history(input);
-            // Free Input
-            free(input);
-        }
-        std::cout << "Goodbye :(" << std::endl;
-
-        return 0;
-    }
+//    RC CLI::start() {
+//
+//        // what do we want from readline?
+//        using_history();
+//        // auto-complete = TAB
+//        rl_bind_key('\t', rl_complete);
+//
+//        char *input, shell_prompt[100];
+//        std::cout << "************************" << std::endl;
+//        std::cout << "SecSQL CLI started" << std::endl;
+//        std::cout << "Enjoy!" << std::endl;
+//        for (;;) {
+//
+//            // Create prompt string from user name and current working directory.
+//            //snprintf(shell_prompt, sizeof(shell_prompt), "%s >>> ", getenv("USER"));
+//            snprintf(shell_prompt, sizeof(shell_prompt), ">>> ");
+//            // Display prompt and read input (n.b. input must be freed after use)...
+//            input = readline(shell_prompt);
+//
+//            // check for EOF
+//            if (!input)
+//                break;
+//            if ((this->process(std::string(input))) == EXIT_CODE) {
+//                free(input);
+//                break;
+//            }
+//            add_history(input);
+//            // Free Input
+//            free(input);
+//        }
+//        std::cout << "Goodbye :(" << std::endl;
+//
+//        return 0;
+//    }
 
     RC CLI::process(const std::string& input) {
         // convert input to char *
@@ -1701,29 +1702,29 @@ namespace PeterDB {
         return rc;
     }
 
-    RC CLI::history() {
-#ifndef NO_HISTORY_LIST
-        HIST_ENTRY **the_list;
-      int ii;
-      the_list = history_list();
-      if (the_list)
-      for (ii = 0; the_list[ii]; ii++)
-         printf ("%d: %s\n", ii + history_base, the_list[ii]->line);
-#else
-        HIST_ENTRY *the_list;
-        the_list = current_history();
-        std::vector <std::string> list;
-        while (the_list) {
-            list.emplace_back(the_list->line);
-            the_list = next_history();
-        }
-        int tot = list.size();
-        for (int i = tot - 1; i >= 0; i--) {
-            std::cout << (tot - i) << ": " << list.at(i) << std::endl;
-        }
-#endif
-        return 0;
-    }
+//    RC CLI::history() {
+//#ifndef NO_HISTORY_LIST
+//        HIST_ENTRY **the_list;
+//      int ii;
+//      the_list = history_list();
+//      if (the_list)
+//      for (ii = 0; the_list[ii]; ii++)
+//         printf ("%d: %s\n", ii + history_base, the_list[ii]->line);
+//#else
+//        HIST_ENTRY *the_list;
+//        the_list = current_history();
+//        std::vector <std::string> list;
+//        while (the_list) {
+//            list.emplace_back(the_list->line);
+//            the_list = next_history();
+//        }
+//        int tot = list.size();
+//        for (int i = tot - 1; i >= 0; i--) {
+//            std::cout << (tot - i) << ": " << list.at(i) << std::endl;
+//        }
+//#endif
+//        return 0;
+//    }
 
     // checks whether given tableName-columnName exists or not in cli_columns or cli_indexes
     bool CLI::checkAttribute(const std::string& tableName, const std::string& columnName, RID &rid, bool searchColumns) {
