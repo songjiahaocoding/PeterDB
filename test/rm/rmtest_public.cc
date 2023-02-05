@@ -54,7 +54,11 @@ namespace PeterDBTesting {
 
     }
 
-    TEST_F(RM_Tuple_Test, get_attributes) {
+    TEST_F(RM_Tuple_Test, clean_up){
+        std::cout<< "Clean up"<< std::endl;
+    }
+
+    TEST_F(RM_Tuple_Test, get_attributes)  {
         // Functions Tested
         // 1. getAttributes
 
@@ -73,7 +77,6 @@ namespace PeterDBTesting {
         ASSERT_EQ(attrs[3].name, "salary") << "Attribute is not correct.";
         ASSERT_EQ(attrs[3].type, PeterDB::TypeReal) << "Attribute is not correct.";
         ASSERT_EQ(attrs[3].length, 4) << "Attribute is not correct.";
-
     }
 
     TEST_F(RM_Tuple_Test, insert_and_read_tuple) {

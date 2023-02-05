@@ -80,9 +80,9 @@ namespace PeterDB {
     #define FLOAT_DIFF 0.0000001
     class RBFM_ScanIterator {
     public:
-        RBFM_ScanIterator() = default;;
+        RBFM_ScanIterator() = default;
 
-        ~RBFM_ScanIterator() = default;;
+        ~RBFM_ScanIterator() = default;
 
         // Never keep the results in the memory. When getNextRecord() is called,
         // a satisfying record needs to be fetched from the file.
@@ -96,11 +96,11 @@ namespace PeterDB {
                   const void *pVoid, const std::vector<std::string> &vector1);
 
     private:
-        FileHandle& fileHandle;
+        FileHandle* fileHandle;
         std::vector<Attribute> descriptor;
         std::string conditionAttribute;
         CompOp commOp;
-        std::vector<std::string>& attributeNames;
+        std::vector<std::string> attributeNames;
         unsigned currentPageNum;
         unsigned short currentSlotNum;
         unsigned attributeIndex;

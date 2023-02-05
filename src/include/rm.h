@@ -10,7 +10,7 @@ namespace PeterDB {
     #define RM_EOF (-1)  // end of a scan operator
     const std::vector<Attribute> Tables_Descriptor = {
             {
-                    "ID",
+                    "tableID",
                     TypeInt,
                     (AttrLength)4
             },
@@ -28,7 +28,7 @@ namespace PeterDB {
 
     const std::vector<Attribute> Columns_Descriptor = {
             {
-                    "tableId",
+                    "tableID",
                     TypeInt,
                     (AttrLength) 4
             },

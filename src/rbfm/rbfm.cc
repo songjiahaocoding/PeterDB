@@ -507,7 +507,7 @@ namespace PeterDB {
         }
 
         size = sizeof(short int)+flag_size + INDEX_SIZE*fieldNum + totalSize;
-        data = new char [size];
+        data = new char [sizeof(char)*size];
         memset(data, 0, sizeof(char)*size);
         short int recordOffset = 0;
         // # of fields
@@ -559,14 +559,17 @@ namespace PeterDB {
         while(!found){
             // Initialize data
             memset(pageData, 0, PAGE_SIZE);
-            fileHandle.readPage(currentPageNum, pageData);
+            fileHandle->readPage(currentPageNum, pageData);
             unsigned* info = new unsigned [PAGE_INFO_NUM];
             rbfm.getInfo(pageData, info);
             // Judge if the current record match
             auto slot = rbfm.getSlotInfo(currentSlotNum, pageData);
             char* recordData = pageData + slot.first;
             char* attrValue = new char [slot.second];
-            rbfm.readAttribute(fileHandle, descriptor, rid, conditionAttribute, attrValue);
+            memset(attrValue, 0, slot.second);
+            rid.pageNum = currentPageNum;
+            rid.slotNum = currentSlotNum;
+            rbfm.readAttribute(*fileHandle, descriptor, rid, conditionAttribute, attrValue);
             if(isMatch(recordData, attrValue)){
                 found = true;
                 char* res = (char*)data;
@@ -593,13 +596,14 @@ namespace PeterDB {
                     memcpy(res, attrPos, attrSize);
                     res += attrSize;
                 }
+                moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM]);
                 delete [] info;
                 delete [] attrValue;
                 break;
             }
             // Move to the nexxt record
             // If moved to the last one, break the loop return -1
-            if(moveToNext(fileHandle.getNumberOfPages(), info[SLOT_NUM])==-1) {
+            if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1) {
                 delete [] info;
                 delete [] attrValue;
                 break;
@@ -633,7 +637,7 @@ namespace PeterDB {
 
     void RBFM_ScanIterator::init(FileHandle &filehandle, const std::vector<Attribute> &descriptor, const std::string &condition,
                             const CompOp compOp, const void *value, const std::vector<std::string> &attributeNames) {
-        this->fileHandle = filehandle;
+        this->fileHandle = &filehandle;
         this->descriptor = descriptor;
         this->commOp = compOp;
         this->attributeNames = attributeNames;
@@ -651,7 +655,8 @@ namespace PeterDB {
         }
 
         switch (this->attrType) {
-            case TypeInt || TypeReal:
+            case TypeInt:
+            case TypeReal:
                 this->conditionVal = new char [sizeof(float)];
                 memset(this->conditionVal, 0, sizeof(float));
                 memcpy(this->conditionVal, value, sizeof(float));
@@ -659,10 +664,12 @@ namespace PeterDB {
             case TypeVarChar:
                 unsigned size;
                 memcpy(&size, value, sizeof(unsigned ));
-                this->conditionVal = new char [size+sizeof(unsigned )];
-                memset( this->conditionVal, 0, size+sizeof(unsigned ));
+                this->conditionVal = new char [size+sizeof(unsigned)];
+                memset(this->conditionVal, 0, size+sizeof(unsigned ));
                 memcpy(this->conditionVal, value, size+sizeof(unsigned ));
                 break;
+            default:
+                std::cout<< "error: No type match"<< std::endl;
         }
     }
 
@@ -704,25 +711,20 @@ namespace PeterDB {
             }
             case TypeVarChar:
             {
-                unsigned attrLen;
                 unsigned conditionLen;
-                memcpy(&attrValue, attrValue, sizeof (unsigned));
                 memcpy(&conditionLen, conditionVal, sizeof(unsigned));
 
                 char* condition = new char [conditionLen];
-                char* val = new char [attrLen];
                 memset(condition, 0, conditionLen);
-                memset(attrValue, 0, attrLen);
                 memcpy(condition, conditionVal+sizeof(unsigned), conditionLen);
-                memcpy(val, attrValue+sizeof(unsigned), attrLen);
 
                 switch (commOp) {
-                    case EQ_OP: return val == condition;
-                    case LT_OP: return val <  condition;
-                    case LE_OP: return val <= condition;
-                    case GT_OP: return val >  condition;
-                    case GE_OP: return val >= condition;
-                    case NE_OP: return val != condition;
+                    case EQ_OP: return strcmp(attrValue, condition)==0;
+                    case LT_OP: return strcmp(attrValue, condition)<0;
+                    case LE_OP: return strcmp(attrValue, condition)<=0;
+                    case GT_OP: return strcmp(attrValue, condition)>0;
+                    case GE_OP: return strcmp(attrValue, condition)>=0;
+                    case NE_OP: return strcmp(attrValue, condition)!=0;
                     default: return false;
                 }
             }
