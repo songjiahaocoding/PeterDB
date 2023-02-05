@@ -1,7 +1,7 @@
 #include "src/include/cli.h"
 
-#include <readline/readline.h>
-#include <readline/history.h>
+//#include <readline/readline.h>
+//#include <readline/history.h>
 #include <fstream>
 
 // Command parsing delimiters
