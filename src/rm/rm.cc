@@ -132,6 +132,8 @@ namespace PeterDB {
     RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attribute> &attrs) {
         char* tableData = new char [TABLES_TUPLE_SIZE];
         char* columnData = new char [COLUMNS_TUPLE_SIZE];
+        memset(tableData, 0, TABLES_TUPLE_SIZE);
+        memset(columnData, 0, COLUMNS_TUPLE_SIZE);
         RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
         RBFM_ScanIterator tableIterator;
         char* tableID = new char [sizeof (int)];
@@ -163,7 +165,7 @@ namespace PeterDB {
             memcpy(&nameSize, column, sizeof(int));
             column+=sizeof(int);
             char* attrName = new char [nameSize];
-            memset(attrName, 0, nameSize+1);
+            memset(attrName, 0, nameSize);
             memcpy(attrName, column, nameSize);
             column+=nameSize;
             unsigned attrType;
@@ -171,11 +173,13 @@ namespace PeterDB {
             column+=sizeof(int);
             unsigned attrSize;
             memcpy(&attrSize, column, sizeof(int));
-            std::string name(attrName);
+            std::string name(attrName, nameSize);
             attrs.push_back({name, (AttrType)attrType, (AttrLength)attrSize});
             delete [] attrName;
         }
 
+        delete [] columnData;
+        delete [] tableID;
         delete [] tableData;
         delete [] condition;
         columnFileHandle.closeFile();
@@ -388,6 +392,7 @@ namespace PeterDB {
         rbfm.openFile("Variables",varFile);
         rbfm.updateRecord(varFile, {{"count", TypeInt, 4}}, countData, {0,0});
         varFile.closeFile();
+        delete [] countData;
     }
 
     int RelationManager::getTableCount() {

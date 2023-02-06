@@ -94,6 +94,7 @@ namespace PeterDB {
             info[INFO_OFFSET] += SLOT_SIZE;
         }
         memcpy((void*)(pageData + PAGE_SIZE - sizeof(unsigned) * PAGE_INFO_NUM), info, sizeof(unsigned) * PAGE_INFO_NUM);
+        delete [] info;
         return slotID;
     }
 
@@ -102,7 +103,7 @@ namespace PeterDB {
         getInfo(data, info);
         // Write the record to page
         memcpy(data+info[DATA_OFFSET], record.data, record.size);
-        memcpy(data+info[DATA_OFFSET]+record.size, &rid, sizeof rid);
+        memcpy(data+info[DATA_OFFSET]+record.size, &rid, sizeof(RID));
         // Write a new slot information
         std::pair<short int ,short int> newSlot;
         newSlot = {info[DATA_OFFSET], record.size+sizeof rid};
@@ -189,7 +190,7 @@ namespace PeterDB {
         char* dataPtr = flagPtr + flag_size + INDEX_SIZE*fieldNum;
 
         memcpy(data, flagPtr, flag_size);
-        memcpy((char*)data+flag_size, dataPtr, recordSize-flag_size-INDEX_SIZE*fieldNum-sizeof(short)-sizeof(RID));
+        memcpy((char*)data+flag_size, dataPtr, recordSize-sizeof(short)-flag_size-INDEX_SIZE*fieldNum-sizeof(RID));
     }
 
     RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescriptor, const void *data,
@@ -379,6 +380,7 @@ namespace PeterDB {
                                              const RID &rid, const std::string &attributeName, void *data) {
         short id = getAttrID(recordDescriptor, attributeName);
         char* pageData = new char [PAGE_SIZE];
+        memset(pageData, 0, PAGE_SIZE);
         fileHandle.readPage(rid.pageNum, pageData);
         auto slot = getSlotInfo(rid.slotNum, pageData);
         char* recordData = new char [slot.second];
@@ -392,11 +394,13 @@ namespace PeterDB {
                 memcpy(data, attrPos, sizeof(float));
                 break;
             case TypeVarChar:
-                int size;
+                int size = 0;
                 memcpy(&size, attrPos, sizeof(int));
                 memcpy(data, attrPos+sizeof(int), size);
                 break;
         }
+        delete [] recordData;
+        delete [] pageData;
         return 0;
     }
 
@@ -428,18 +432,17 @@ namespace PeterDB {
     }
 
     unsigned RecordBasedFileManager::getNextAvailablePageNum(short int insertSize, FileHandle &handle, unsigned int startingNum) {
+        char* pageData = new char [PAGE_SIZE];
         for (int i = 0; i < handle.getNumberOfPages(); ++i) {
-            char* pageData = new char [PAGE_SIZE];
             memset(pageData, 0, PAGE_SIZE);
             handle.readPage((startingNum + i) % handle.getNumberOfPages(), pageData);
             if(insertSize<getFreeSpace(pageData)){
                 delete[] pageData;
                 return (startingNum+i)%handle.getNumberOfPages();
             }
-            delete[] pageData;
         }
         appendNewPage(handle);
-
+        delete [] pageData;
         return handle.getNumberOfPages()-1;
     }
 
@@ -507,8 +510,8 @@ namespace PeterDB {
         }
 
         size = sizeof(short int)+flag_size + INDEX_SIZE*fieldNum + totalSize;
-        data = new char [sizeof(char)*size];
-        memset(data, 0, sizeof(char)*size);
+        data = new char [size];
+        memset(data, 0, size);
         short int recordOffset = 0;
         // # of fields
         memcpy(data+recordOffset, &fieldNum, FIELD_NUM_SIZE);
@@ -565,15 +568,17 @@ namespace PeterDB {
             // Judge if the current record match
             auto slot = rbfm.getSlotInfo(currentSlotNum, pageData);
             char* recordData = pageData + slot.first;
-            char* attrValue = new char [slot.second];
-            memset(attrValue, 0, slot.second);
+            char* attrValue = new char [attrLength];
+            memset(attrValue, 0, attrLength);
             rid.pageNum = currentPageNum;
             rid.slotNum = currentSlotNum;
             rbfm.readAttribute(*fileHandle, descriptor, rid, conditionAttribute, attrValue);
             if(isMatch(recordData, attrValue)){
                 found = true;
                 char* res = (char*)data;
-                Record record(descriptor, recordData, rid);
+                char* recordBody = new char[slot.second];
+                rbfm.fetchRecord(slot.first, slot.second, recordBody, pageData);
+                Record record(descriptor, recordBody, rid);
                 // Include a null indicator to the returned data
                 short int flag_size = std::ceil( static_cast<double>(attributeNames.size()) /CHAR_BIT);
                 memset(res, 0, flag_size);
@@ -664,7 +669,8 @@ namespace PeterDB {
                 break;
             case TypeVarChar:
                 unsigned size;
-                memcpy(&size, value, sizeof(unsigned ));
+                memcpy(&size, value, sizeof(unsigned));
+                this->attrLength = size;
                 this->conditionVal = new char [size+sizeof(unsigned)];
                 memset(this->conditionVal, 0, size+sizeof(unsigned ));
                 memcpy(this->conditionVal, value, size+sizeof(unsigned ));
@@ -719,15 +725,36 @@ namespace PeterDB {
                 memset(condition, 0, conditionLen);
                 memcpy(condition, conditionVal+sizeof(unsigned), conditionLen);
 
+                bool res = false;
+
                 switch (commOp) {
-                    case EQ_OP: return strcmp(attrValue, condition)==0;
-                    case LT_OP: return strcmp(attrValue, condition)<0;
-                    case LE_OP: return strcmp(attrValue, condition)<=0;
-                    case GT_OP: return strcmp(attrValue, condition)>0;
-                    case GE_OP: return strcmp(attrValue, condition)>=0;
-                    case NE_OP: return strcmp(attrValue, condition)!=0;
-                    default: return false;
+                    case EQ_OP: {
+                        res = strcmp(attrValue, condition)==0;
+                        break;
+                    }
+                    case LT_OP: {
+                        res = strcmp(attrValue, condition)<0;
+                        break;
+                    }
+                    case LE_OP: {
+                        res = strcmp(attrValue, condition)<=0;
+                        break;
+                    }
+                    case GT_OP: {
+                        res = strcmp(attrValue, condition)>0;
+                        break;
+                    }
+                    case GE_OP: {
+                        res = strcmp(attrValue, condition)>=0;
+                        break;
+                    }
+                    case NE_OP: {
+                        res = strcmp(attrValue, condition)!=0;
+                        break;
+                    }
                 }
+                delete [] condition;
+                return res;
             }
             default:
                 std::cout<<"Error with the attribute type"<< std::endl;

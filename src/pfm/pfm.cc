@@ -154,7 +154,7 @@ namespace PeterDB {
     }
 
     infoPage::infoPage() {
-        memset(info, 0, ACTIVE_PAGE_NUM*sizeof(unsigned));
+        memset(info, 0, INFO_NUM*sizeof(unsigned));
         info[READ_NUM]  = 0;
         info[WRITE_NUM] = 0;
         info[APPEND_NUM] = 0;

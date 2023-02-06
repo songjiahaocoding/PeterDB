@@ -106,6 +106,7 @@ namespace PeterDB {
         unsigned attributeIndex;
         AttrType attrType;
         char* conditionVal;
+        unsigned attrLength;
 
         RC moveToNext(unsigned int pageNum, unsigned short slotNum);
         bool isMatch(char *record, char *attrValue);
