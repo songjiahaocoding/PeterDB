@@ -108,7 +108,7 @@ namespace PeterDB {
         char* conditionVal;
         unsigned attrLength;
 
-        RC moveToNext(unsigned int pageNum, unsigned short slotNum);
+        RC moveToNext(unsigned pageNum, unsigned slotNum);
         bool isMatch(char *record, char *attrValue);
 
         void setAttrNull(void *src, ushort attrNum, bool isNull);
@@ -135,8 +135,6 @@ namespace PeterDB {
         void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid, char* data);
         void fetchRecord(int offset, int recordSize, void* data, void* page);
         unsigned int getFreeSpace(char* data);
-
-        void compact(FileHandle& fileHandle, int pageNum, short idx, short offset);
 
         //  Format of the data passed into the function is the following:
         //  [n byte-null-indicators for y fields] [actual value for the first field] [actual value for the second field] ...
@@ -196,42 +194,41 @@ namespace PeterDB {
 
         bool isTomb(char *data);
 
-        std::pair<short, short> getSlotInfo(unsigned short slotNum, const char *data);
+        std::pair<unsigned , unsigned> getSlotInfo(unsigned slotNum, const char *data);
 
         unsigned short getAttrID(const std::vector<Attribute> &recordDescriptor, const std::string &attributeName);
 
         char *getAttrPos(const std::vector<Attribute> &recordDescriptor, char *recordData, short id);
+
+        bool isNull(char *flag, int fieldNum);
 
     protected:
         RecordBasedFileManager();                                                   // Prevent construction
         ~RecordBasedFileManager();                                                  // Prevent unwanted destruction
         RecordBasedFileManager(const RecordBasedFileManager &);                     // Prevent construction by copying
         RecordBasedFileManager &operator=(const RecordBasedFileManager &);          // Prevent assignment
-        unsigned getNextAvailablePageNum(short int insertSize, PeterDB::FileHandle &handle, unsigned num);
+        unsigned getNextAvailablePageNum(unsigned insertSize, PeterDB::FileHandle &handle, unsigned num);
 
         void updateInfo(FileHandle& fileHandle, char *data, unsigned pageNum, unsigned* info);
 
-        short getDeletedSlot(char *data);
+        int getDeletedSlot(char *data);
 
         RID getPointRID(char *data_offset);
 
-        void insertTomb(char *data, unsigned int offset, unsigned int pageNum, unsigned short slotNum);
+        void insertTomb(char *data, unsigned int pageNum, unsigned slotNum);
 
-        void insertTomb(char *data, unsigned int pageNum, unsigned short slotNum);
+        void writeSlotInfo(unsigned slotNum, const char *data, std::pair<unsigned , unsigned > slot);
 
-        void writeSlotInfo(unsigned short slotNum, const char *data, std::pair<short, short> slot);
+        void shiftRecord(char *data, unsigned offset, unsigned size, unsigned shiftOffset, unsigned len);
 
-        void shiftRecord(char *data, unsigned int offset, unsigned size, unsigned int shiftOffset, unsigned int len);
+        void writeUpdateInfo(FileHandle &fileHandle, unsigned *info, std::pair<unsigned , unsigned> slot, unsigned size,
+                        unsigned oldSize, const RID &rid, char *pageData);
 
-        void
-        writeUpdateInfo(FileHandle &fileHandle, unsigned int *info, std::pair<short, short> slot, unsigned int size,
-                        unsigned int oldSize, const RID &rid, char *pageData);
-
-        unsigned short getSlotNum(char *pageData);
+        unsigned getSlotNum(char *pageData);
 
     };
 
-    #define SLOT_SIZE sizeof(std::pair<uint16_t, uint16_t>)
+    #define SLOT_SIZE sizeof(std::pair<unsigned, unsigned>)
     enum pageInfo {
         INFO_OFFSET = 0,
         DATA_OFFSET,
