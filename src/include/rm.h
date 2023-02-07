@@ -10,17 +10,17 @@ namespace PeterDB {
     #define RM_EOF (-1)  // end of a scan operator
     const std::vector<Attribute> Tables_Descriptor = {
             {
-                    "tableID",
+                    "table-id",
                     TypeInt,
                     (AttrLength)4
             },
             {
-                    "tableName",
+                    "table-name",
                     TypeVarChar,
                     (AttrLength)50
             },
             {
-                    "fileName",
+                    "file-name",
                     TypeVarChar,
                     (AttrLength)50
             }
@@ -28,27 +28,27 @@ namespace PeterDB {
 
     const std::vector<Attribute> Columns_Descriptor = {
             {
-                    "tableID",
+                    "table-id",
                     TypeInt,
                     (AttrLength) 4
             },
             {
-                    "columnName",
+                    "column-name",
                     TypeVarChar,
                     (AttrLength) 50
             },
             {
-                    "columnType",
+                    "column-type",
                     TypeInt,
                     (AttrLength) 4
             },
             {
-                    "columnLength",
+                    "column-length",
                     TypeInt,
                     (AttrLength) 4
             },
             {
-                    "columnPosition",
+                    "column-position",
                     TypeInt,
                     (AttrLength) 4
             }

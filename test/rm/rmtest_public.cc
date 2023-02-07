@@ -973,7 +973,6 @@ namespace PeterDBTesting {
         for (int i = 0; i < numTuples; i = i + 10) {
             unsigned attrID = dist8(generator);
             validateAttribute(attrID, i, i, i + 100);
-
         }
     }
 

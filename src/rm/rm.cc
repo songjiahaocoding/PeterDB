@@ -40,35 +40,35 @@ namespace PeterDB {
         rbfm.openFile("Columns", fileHandle);
         tuple = new char [COLUMNS_TUPLE_SIZE];
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
-        buildColumnsTuple(1, {"tableID", TypeInt, 4}, 1, tuple);
+        buildColumnsTuple(1, {"table-id", TypeInt, 4}, 1, tuple);
         rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
-        buildColumnsTuple(1, {"tableName", TypeVarChar, 50}, 2, tuple);
+        buildColumnsTuple(1, {"table-name", TypeVarChar, 50}, 2, tuple);
         rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
-        buildColumnsTuple(1, {"fileName", TypeVarChar, 50}, 3, tuple);
+        buildColumnsTuple(1, {"file-name", TypeVarChar, 50}, 3, tuple);
         rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
-        buildColumnsTuple(2, {"tableID", TypeInt, 4}, 1, tuple);
+        buildColumnsTuple(2, {"table-id", TypeInt, 4}, 1, tuple);
         rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
-        buildColumnsTuple(2, {"columnName", TypeVarChar, 50}, 2, tuple);
+        buildColumnsTuple(2, {"column-name", TypeVarChar, 50}, 2, tuple);
         rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
-        buildColumnsTuple(2, {"columnType", TypeInt, 4}, 3, tuple);
+        buildColumnsTuple(2, {"column-type", TypeInt, 4}, 3, tuple);
         rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
-        buildColumnsTuple(2, {"columnLength", TypeInt, 4}, 4, tuple);
+        buildColumnsTuple(2, {"column-length", TypeInt, 4}, 4, tuple);
         rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
-        buildColumnsTuple(2, {"columnPosition", TypeInt, 4}, 5, tuple);
+        buildColumnsTuple(2, {"column-position", TypeInt, 4}, 5, tuple);
         rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
         fileHandle.closeFile();
@@ -96,34 +96,42 @@ namespace PeterDB {
 
     RC RelationManager::createTable(const std::string &tableName, const std::vector<Attribute> &attrs) {
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
-        FileHandle fileHandle;
+        FileHandle tablesHandle;
+        FileHandle columnHandle;
         RID rid;
-        // Insert Tables data
-        if(rbfm.openFile("Tables", fileHandle)!=0)return -1;
-        if(rbfm.createFile(tableName)!=0)return -1;
+
+        if(rbfm.openFile("Tables", tablesHandle)!=0 || rbfm.openFile("Columns", columnHandle))return -1;
+        if(rbfm.createFile(tableName)!=0){
+            columnHandle.closeFile();
+            tablesHandle.closeFile();
+            return -1;
+        }
+
         char* tuple = new char [TABLES_TUPLE_SIZE];
         int tableID = getTableCount() + 1;
-
         buildTablesTuple(tableID, tableName, tableName, tuple);
-        rbfm.insertRecord(fileHandle, Tables_Descriptor, tuple, rid);
-        fileHandle.closeFile();
+        rbfm.insertRecord(tablesHandle, Tables_Descriptor, tuple, rid);
+
         // Insert Columns data
         delete [] tuple;
         tuple = new char [COLUMNS_TUPLE_SIZE];
-        rbfm.openFile("Columns", fileHandle);
         for(int i = 0 ; i < attrs.size() ; i++) {
             memset(tuple, 0, COLUMNS_TUPLE_SIZE);
             buildColumnsTuple(tableID, attrs[i], i+1, tuple);
-            rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+            rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
         }
-        fileHandle.closeFile();
+
+        tablesHandle.closeFile();
+        columnHandle.closeFile();
         delete [] tuple;
         this->addTableCount();
         return 0;
     }
 
     RC RelationManager::deleteTable(const std::string &tableName) {
+        if(tableName=="Tables"||tableName=="Columns")return -1;
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+
 
         if(rbfm.destroyFile(tableName)==0)return 0;
         return -1;
@@ -148,7 +156,7 @@ namespace PeterDB {
         char* condition = new char [sizeof(int)+size];
         memcpy(condition, &size, sizeof(int));
         memcpy(condition+sizeof(int), tableName.c_str(), size);
-        rbfm.scan(tableFileHandle, Tables_Descriptor, "tableName", EQ_OP, condition, {"tableID"}, tableIterator);
+        rbfm.scan(tableFileHandle, Tables_Descriptor, "table-name", EQ_OP, condition, {"table-id"}, tableIterator);
         if(tableIterator.getNextRecord(rid, tableData)==-1){
             return -1;
         }
@@ -156,7 +164,7 @@ namespace PeterDB {
 
         RBFM_ScanIterator columnsIterator;
 
-        rbfm.scan(columnFileHandle, Columns_Descriptor, "tableID", EQ_OP, tableID, {"columnName","columnType","columnLength"}, columnsIterator);
+        rbfm.scan(columnFileHandle, Columns_Descriptor, "table-id", EQ_OP, tableID, {"column-name","column-type","column-length"}, columnsIterator);
 
         while(columnsIterator.getNextRecord(rid, columnData)!=-1){
             char* column = columnData;
