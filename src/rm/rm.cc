@@ -282,12 +282,12 @@ namespace PeterDB {
 
         RC rc;
         FileHandle fileHandle;
-        rc = rbfm.openFile(tableName, fileHandle);
+        rc = rbfm.openFile(tableName, rm_ScanIterator.fileHandle);
         if( rc != 0) {
             return -1;
         }
 
-        rc = rbfm.scan(fileHandle, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator);
+        rc = rbfm.scan(rm_ScanIterator.fileHandle, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator);
         return rc;
     }
 
