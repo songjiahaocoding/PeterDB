@@ -378,25 +378,31 @@ namespace PeterDB {
 
     RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                              const RID &rid, const std::string &attributeName, void *data) {
-        short id = getAttrID(recordDescriptor, attributeName);
+        auto id = getAttrID(recordDescriptor, attributeName);
         char* pageData = new char [PAGE_SIZE];
         memset(pageData, 0, PAGE_SIZE);
         fileHandle.readPage(rid.pageNum, pageData);
         auto slot = getSlotInfo(rid.slotNum, pageData);
         char* recordData = new char [slot.second];
+        if(isNull(recordData, id)){
+            char* flag = reinterpret_cast<char *>(1);
+            memcpy(data, flag, 1);
+        }
+        memset(recordData, 0, slot.second);
         memcpy(recordData, pageData+slot.first, slot.second);
         auto attrPos = getAttrPos(recordDescriptor, recordData, id);
         switch (recordDescriptor.at(id).type) {
             case TypeInt:
-                memcpy(data, attrPos, sizeof(int));
+                memcpy((char*)data+1, attrPos, sizeof(int));
                 break;
             case TypeReal:
-                memcpy(data, attrPos, sizeof(float));
+                memcpy((char*)data+1, attrPos, sizeof(float));
                 break;
             case TypeVarChar:
                 int size = 0;
                 memcpy(&size, attrPos, sizeof(int));
-                memcpy(data, attrPos+sizeof(int), size);
+                memcpy((char*)data+1, &size, sizeof(int));
+                memcpy((char*)data+1+sizeof(int), attrPos+sizeof(int), size);
                 break;
         }
         delete [] recordData;
@@ -580,7 +586,7 @@ namespace PeterDB {
             rid.pageNum = currentPageNum;
             rid.slotNum = currentSlotNum;
             rbfm.readAttribute(*fileHandle, descriptor, rid, conditionAttribute, attrValue);
-            if(isMatch(recordData, attrValue)){
+            if(isMatch(recordData, attrValue+1)){
                 found = true;
                 char* res = (char*)data;
                 char* recordBody = new char[slot.second];
@@ -666,29 +672,34 @@ namespace PeterDB {
                 break;
             }
         }
-
-        switch (this->attrType) {
-            case TypeInt:
-            case TypeReal:
-                this->conditionVal = new char [sizeof(float)];
-                memset(this->conditionVal, 0, sizeof(float));
-                memcpy(this->conditionVal, value, sizeof(float));
-                break;
-            case TypeVarChar:
-                unsigned size;
-                memcpy(&size, value, sizeof(unsigned));
-                this->attrLength = size;
-                this->conditionVal = new char [size+sizeof(unsigned)];
-                memset(this->conditionVal, 0, size+sizeof(unsigned ));
-                memcpy(this->conditionVal, value, size+sizeof(unsigned ));
-                break;
-            default:
-                std::cout<< "error: No type match"<< std::endl;
+        if (value){
+            switch (this->attrType) {
+                case TypeInt:
+                case TypeReal:
+                    this->conditionVal = new char [sizeof(float)];
+                    memset(this->conditionVal, 0, sizeof(float));
+                    memcpy(this->conditionVal, value, sizeof(float));
+                    break;
+                case TypeVarChar:
+                    unsigned size;
+                    memcpy(&size, value, sizeof(unsigned));
+                    this->attrLength = size;
+                    this->conditionVal = new char [size+sizeof(unsigned)];
+                    memset(this->conditionVal, 0, size+sizeof(unsigned ));
+                    memcpy(this->conditionVal, value, size+sizeof(unsigned ));
+                    break;
+                default:
+                    std::cout<< "error: No type match"<< std::endl;
+            }
+        } else {
+            this->conditionVal = nullptr;
         }
     }
 
     bool RBFM_ScanIterator::isMatch(char* record, char* attrValue) {
         if(commOp == NO_OP)return true;
+        if(!conditionVal)return false;
+
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
         if(rbfm.isTomb(record)){
             return false;
@@ -725,42 +736,41 @@ namespace PeterDB {
             }
             case TypeVarChar:
             {
-                unsigned conditionLen;
-                memcpy(&conditionLen, conditionVal, sizeof(unsigned));
-
-                char* condition = new char [conditionLen];
-                memset(condition, 0, conditionLen);
-                memcpy(condition, conditionVal+sizeof(unsigned), conditionLen);
+//                unsigned conditionLen;
+//                memcpy(&conditionLen, conditionVal, sizeof(unsigned));
+//
+//                char* condition = new char [conditionLen];
+//                memset(condition, 0, conditionLen);
+//                memcpy(condition, conditionVal+sizeof(unsigned), conditionLen);
 
                 bool res = false;
 
                 switch (commOp) {
                     case EQ_OP: {
-                        res = strcmp(attrValue, condition)==0;
+                        res = strcmp(attrValue, conditionVal)==0;
                         break;
                     }
                     case LT_OP: {
-                        res = strcmp(attrValue, condition)<0;
+                        res = strcmp(attrValue, conditionVal)<0;
                         break;
                     }
                     case LE_OP: {
-                        res = strcmp(attrValue, condition)<=0;
+                        res = strcmp(attrValue, conditionVal)<=0;
                         break;
                     }
                     case GT_OP: {
-                        res = strcmp(attrValue, condition)>0;
+                        res = strcmp(attrValue, conditionVal)>0;
                         break;
                     }
                     case GE_OP: {
-                        res = strcmp(attrValue, condition)>=0;
+                        res = strcmp(attrValue, conditionVal)>=0;
                         break;
                     }
                     case NE_OP: {
-                        res = strcmp(attrValue, condition)!=0;
+                        res = strcmp(attrValue, conditionVal)!=0;
                         break;
                     }
                 }
-                delete [] condition;
                 return res;
             }
             default:

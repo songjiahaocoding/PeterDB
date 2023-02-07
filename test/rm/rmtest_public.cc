@@ -222,7 +222,6 @@ namespace PeterDBTesting {
         // Check the returned tuple
         ASSERT_EQ(memcmp(inBuffer, outBuffer, updatedTupleSize), 0)
                                     << "The returned tuple is not the same as the updated.";
-
     }
 
     TEST_F(RM_Tuple_Test, read_attribute) {
@@ -320,6 +319,8 @@ namespace PeterDBTesting {
         destroyFile = false; // the table is already deleted.
 
     }
+
+    TEST_F(RM_Scan_Test, clean_up){}
 
     TEST_F(RM_Scan_Test, simple_scan) {
         // Functions Tested
