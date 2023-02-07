@@ -185,7 +185,7 @@ namespace PeterDB {
     void RecordBasedFileManager::fetchRecord(int offset, int recordSize, void *data, void *page) {
         char* recordPtr = (char*)page + offset;
         short int fieldNum = *(short int*)recordPtr;
-        char* flagPtr = recordPtr + sizeof(short int);
+        char* flagPtr = recordPtr + FIELD_NUM_SIZE;
         short int flag_size = std::ceil( static_cast<double>(fieldNum) /CHAR_BIT);
         char* dataPtr = flagPtr + flag_size + INDEX_SIZE*fieldNum;
 
@@ -299,7 +299,7 @@ namespace PeterDB {
         Record oldRecord = Record(recordDescriptor, oldData, cpy);
         delete [] oldData;
 
-        if(record.size<oldRecord.size){
+        if(record.size<=oldRecord.size){
             memcpy(data_offset, record.data, record.size);
             shiftRecord(pageData, slot.first, record.size+sizeof(RID), slot.second, info[DATA_OFFSET]-slot.first-slot.second);
             writeUpdateInfo(fileHandle, info, slot, record.size, oldRecord.size, rid, pageData);
@@ -336,7 +336,7 @@ namespace PeterDB {
 
     void RecordBasedFileManager::writeUpdateInfo(FileHandle &fileHandle, unsigned* info, std::pair<unsigned, unsigned> slot,
                                                  unsigned size, unsigned oldSize, const RID &rid, char* pageData){
-        slot.second = size;
+        slot.second -= oldSize-size;
         writeSlotInfo(rid.slotNum, pageData, slot);
         info[DATA_OFFSET] += size-oldSize;
         updateInfo(fileHandle, pageData, rid.pageNum, info);

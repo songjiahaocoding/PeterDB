@@ -53,6 +53,13 @@ namespace PeterDB {
                     (AttrLength) 4
             }
     };
+    const std::vector<Attribute> Variables_Descriptor{
+            {
+                "count",
+                TypeInt,
+                (AttrLength)4
+            }
+    };
     // RM_ScanIterator is an iterator to go through tuples
     class RM_ScanIterator {
     public:

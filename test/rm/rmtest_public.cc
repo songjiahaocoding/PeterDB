@@ -83,8 +83,6 @@ namespace PeterDBTesting {
         // Functions tested
         // 1. Insert Tuple
         // 2. Read Tuple
-
-
         size_t tupleSize = 0;
         inBuffer = malloc(200);
         outBuffer = malloc(200);

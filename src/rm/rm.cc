@@ -78,7 +78,7 @@ namespace PeterDB {
         memset(countData, 0, sizeof(int));
         memcpy(countData+1, &initCount, sizeof(int));
         rbfm.openFile("Variables",fileHandle);
-        rbfm.insertRecord(fileHandle, {{"count", TypeInt, 4}}, countData, rid);
+        rbfm.insertRecord(fileHandle, Variables_Descriptor, countData, rid);
 
         fileHandle.closeFile();
         delete [] countData;
@@ -390,7 +390,7 @@ namespace PeterDB {
         memset(countData, 0, sizeof(int)+1);
         memcpy(countData+1, &count, sizeof(int));
         rbfm.openFile("Variables",varFile);
-        rbfm.updateRecord(varFile, {{"count", TypeInt, 4}}, countData, {0,0});
+        rbfm.updateRecord(varFile, Variables_Descriptor, countData, {0,0});
         varFile.closeFile();
         delete [] countData;
     }
@@ -401,7 +401,7 @@ namespace PeterDB {
         int count = 0;
         char* countData = new char [sizeof(int)+1];
         rbfm.openFile("Variables",fileHandle);
-        rbfm.readRecord(fileHandle, {{"count", TypeInt, 4}}, {0,0}, countData);
+        rbfm.readRecord(fileHandle, Variables_Descriptor, {0,0}, countData);
         fileHandle.closeFile();
         memcpy(&count, countData+1, sizeof(int));
         delete[] countData;
