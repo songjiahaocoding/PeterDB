@@ -584,7 +584,7 @@ namespace PeterDB {
             // Judge if the current record match
             auto slot = rbfm.getSlotInfo(currentSlotNum, pageData);
             char* recordData = pageData + slot.first;
-            memset(attrValue, 0, attrLength);
+            memset(attrValue, 0, attrLength+1);
             rid.pageNum = currentPageNum;
             rid.slotNum = currentSlotNum;
             rbfm.readAttribute(*fileHandle, descriptor, rid, conditionAttribute, attrValue);
@@ -594,7 +594,6 @@ namespace PeterDB {
                 char* recordBody = new char[slot.second];
                 rbfm.fetchRecord(slot.first, slot.second, recordBody, pageData);
                 Record record(descriptor, recordBody, rid);
-                delete [] recordBody;
                 // Include a null indicator to the returned data
                 short int flag_size = std::ceil( static_cast<double>(attributeNames.size()) /CHAR_BIT);
                 memset(res, 0, flag_size);
@@ -619,6 +618,7 @@ namespace PeterDB {
                     res += attrSize;
                 }
                 moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM]);
+                delete [] recordBody;
                 delete [] info;
                 break;
             }
@@ -738,13 +738,6 @@ namespace PeterDB {
             }
             case TypeVarChar:
             {
-//                unsigned conditionLen;
-//                memcpy(&conditionLen, conditionVal, sizeof(unsigned));
-//
-//                char* condition = new char [conditionLen];
-//                memset(condition, 0, conditionLen);
-//                memcpy(condition, conditionVal+sizeof(unsigned), conditionLen);
-
                 bool res = false;
 
                 switch (commOp) {
