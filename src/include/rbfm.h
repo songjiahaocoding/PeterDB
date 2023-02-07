@@ -196,7 +196,7 @@ namespace PeterDB {
 
         std::pair<unsigned , unsigned> getSlotInfo(unsigned slotNum, const char *data);
 
-        unsigned short getAttrID(const std::vector<Attribute> &recordDescriptor, const std::string &attributeName);
+        short getAttrID(const std::vector<Attribute> &recordDescriptor, const std::string &attributeName);
 
         int getAttrPos(const std::vector<Attribute> &recordDescriptor, char *recordData, short id);
 

@@ -386,8 +386,9 @@ namespace PeterDB {
         auto slot = getSlotInfo(rid.slotNum, pageData);
         char* recordData = new char [slot.second];
         if(isNull(recordData+FIELD_NUM_SIZE, id)){
-            char flag = 1;
+            char flag = 0x80;
             memcpy(data, &flag, 1);
+            return 0;
         }
         memset(recordData, 0, slot.second);
         memcpy(recordData, pageData+slot.first, slot.second);
@@ -412,14 +413,14 @@ namespace PeterDB {
         return 0;
     }
 
-    unsigned short RecordBasedFileManager::getAttrID(const std::vector<Attribute> &recordDescriptor, const std::string &attributeName){
+    short RecordBasedFileManager::getAttrID(const std::vector<Attribute> &recordDescriptor, const std::string &attributeName){
         unsigned short id;
         for(id=0;id<recordDescriptor.size();id++){
             if(!recordDescriptor.at(id).name.compare(attributeName)){
-                break;
+                return id;
             }
         }
-        return id;
+        return -1;
     }
 
     int RecordBasedFileManager::getAttrPos(const std::vector<Attribute> &recordDescriptor, char* recordData, short id){
@@ -493,6 +494,7 @@ namespace PeterDB {
     }
 
     bool RecordBasedFileManager::isNull(char* flag, int fieldNum){
+        if(fieldNum<0)return true;
         int bytes = fieldNum / CHAR_BIT;
         int bits = fieldNum % CHAR_BIT;
 
@@ -571,6 +573,9 @@ namespace PeterDB {
     }
 
     RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
+        if(currentPageNum>=fileHandle->getNumberOfPages()){
+            return RBFM_EOF;
+        }
         bool found = false;
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
         char* pageData = new char [PAGE_SIZE];
