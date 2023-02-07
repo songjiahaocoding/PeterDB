@@ -356,6 +356,7 @@ namespace PeterDB {
                 writeSlotInfo(i, data, slot);
             }
         }
+        delete [] info;
     }
 
     void RecordBasedFileManager::insertTomb(char* data, unsigned pageNum, unsigned slotNum){
@@ -384,13 +385,14 @@ namespace PeterDB {
         fileHandle.readPage(rid.pageNum, pageData);
         auto slot = getSlotInfo(rid.slotNum, pageData);
         char* recordData = new char [slot.second];
-        if(isNull(recordData, id)){
-            char* flag = reinterpret_cast<char *>(1);
-            memcpy(data, flag, 1);
+        if(isNull(recordData+FIELD_NUM_SIZE, id)){
+            char flag = 1;
+            memcpy(data, &flag, 1);
         }
         memset(recordData, 0, slot.second);
         memcpy(recordData, pageData+slot.first, slot.second);
-        auto attrPos = getAttrPos(recordDescriptor, recordData, id);
+        int offset = getAttrPos(recordDescriptor, recordData, id);
+        auto attrPos = recordData+offset;
         switch (recordDescriptor.at(id).type) {
             case TypeInt:
                 memcpy((char*)data+1, attrPos, sizeof(int));
@@ -420,13 +422,13 @@ namespace PeterDB {
         return id;
     }
 
-    char* RecordBasedFileManager::getAttrPos(const std::vector<Attribute> &recordDescriptor, char* recordData, short id){
+    int RecordBasedFileManager::getAttrPos(const std::vector<Attribute> &recordDescriptor, char* recordData, short id){
         short int flag_size = std::ceil( static_cast<double>(recordDescriptor.size()) /CHAR_BIT);
         auto indexPos = recordData+FIELD_NUM_SIZE+flag_size;
         auto attrIndexPos = indexPos+INDEX_SIZE*id;
         int offset;
         memcpy(&offset, attrIndexPos, INDEX_SIZE);
-        return recordData+offset;
+        return offset;
     }
 
     RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
@@ -572,6 +574,7 @@ namespace PeterDB {
         bool found = false;
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
         char* pageData = new char [PAGE_SIZE];
+        char* attrValue = new char [attrLength+1];
         while(!found){
             // Initialize data
             memset(pageData, 0, PAGE_SIZE);
@@ -581,7 +584,6 @@ namespace PeterDB {
             // Judge if the current record match
             auto slot = rbfm.getSlotInfo(currentSlotNum, pageData);
             char* recordData = pageData + slot.first;
-            char* attrValue = new char [attrLength];
             memset(attrValue, 0, attrLength);
             rid.pageNum = currentPageNum;
             rid.slotNum = currentSlotNum;
@@ -592,6 +594,7 @@ namespace PeterDB {
                 char* recordBody = new char[slot.second];
                 rbfm.fetchRecord(slot.first, slot.second, recordBody, pageData);
                 Record record(descriptor, recordBody, rid);
+                delete [] recordBody;
                 // Include a null indicator to the returned data
                 short int flag_size = std::ceil( static_cast<double>(attributeNames.size()) /CHAR_BIT);
                 memset(res, 0, flag_size);
@@ -603,7 +606,8 @@ namespace PeterDB {
                         setAttrNull(data, i, true);
                         continue;
                     }
-                    auto attrPos = rbfm.getAttrPos(descriptor, recordData, id);
+                    int offset = rbfm.getAttrPos(descriptor, recordData, id);
+                    auto attrPos = recordData+offset;
                     int attrSize = 4;
                     if(descriptor[id].type==TypeVarChar){
                         memcpy(&attrSize, attrPos, sizeof(int));
@@ -616,19 +620,17 @@ namespace PeterDB {
                 }
                 moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM]);
                 delete [] info;
-                delete [] attrValue;
                 break;
             }
             // Move to the nexxt record
             // If moved to the last one, break the loop return -1
             if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1) {
                 delete [] info;
-                delete [] attrValue;
                 break;
             }
             delete [] info;
-            delete [] attrValue;
         }
+        delete [] attrValue;
         delete [] pageData;
         if(found){
             return 0;
@@ -669,6 +671,7 @@ namespace PeterDB {
             if(!descriptor.at(i).name.compare(condition)){
                 this->attributeIndex = i;
                 this->attrType = descriptor.at(i).type;
+                this->attrLength = descriptor.at(i).length;
                 break;
             }
         }
@@ -683,7 +686,6 @@ namespace PeterDB {
                 case TypeVarChar:
                     unsigned size;
                     memcpy(&size, value, sizeof(unsigned));
-                    this->attrLength = size;
                     this->conditionVal = new char [size+sizeof(unsigned)];
                     memset(this->conditionVal, 0, size+sizeof(unsigned ));
                     memcpy(this->conditionVal, value, size+sizeof(unsigned ));

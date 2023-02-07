@@ -198,7 +198,7 @@ namespace PeterDB {
 
         unsigned short getAttrID(const std::vector<Attribute> &recordDescriptor, const std::string &attributeName);
 
-        char *getAttrPos(const std::vector<Attribute> &recordDescriptor, char *recordData, short id);
+        int getAttrPos(const std::vector<Attribute> &recordDescriptor, char *recordData, short id);
 
         bool isNull(char *flag, int fieldNum);
 
