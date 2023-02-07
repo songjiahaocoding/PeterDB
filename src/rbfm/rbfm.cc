@@ -385,13 +385,15 @@ namespace PeterDB {
         fileHandle.readPage(rid.pageNum, pageData);
         auto slot = getSlotInfo(rid.slotNum, pageData);
         char* recordData = new char [slot.second];
+        memset(recordData, 0, slot.second);
+        memcpy(recordData, pageData+slot.first, slot.second);
         if(isNull(recordData+FIELD_NUM_SIZE, id)){
             char flag = 0x80;
             memcpy(data, &flag, 1);
+            delete [] pageData;
+            delete [] recordData;
             return 0;
         }
-        memset(recordData, 0, slot.second);
-        memcpy(recordData, pageData+slot.first, slot.second);
         int offset = getAttrPos(recordDescriptor, recordData, id);
         auto attrPos = recordData+offset;
         switch (recordDescriptor.at(id).type) {

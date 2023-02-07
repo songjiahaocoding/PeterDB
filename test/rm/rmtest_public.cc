@@ -318,8 +318,6 @@ namespace PeterDBTesting {
 
     }
 
-    TEST_F(RM_Scan_Test, clean_up){}
-
     TEST_F(RM_Scan_Test, simple_scan) {
         // Functions Tested
         // 1. Simple scan
