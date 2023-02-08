@@ -22,65 +22,68 @@ namespace PeterDB {
         rbfm.createFile("Variables");
 
         RID rid;
-        FileHandle fileHandle;
+        FileHandle tablesHandle;
         // Insert some metadata about the initialization for the tables table
-        rbfm.openFile("Tables", fileHandle);
+        rbfm.openFile("Tables", tablesHandle);
         char* tuple = new char [TABLES_TUPLE_SIZE];
         memset(tuple, 0, TABLES_TUPLE_SIZE);
         buildTablesTuple(1, "Tables", "Tables", tuple);
-        rbfm.insertRecord(fileHandle, Tables_Descriptor, tuple, rid);
+        rbfm.insertRecord(tablesHandle, Tables_Descriptor, tuple, rid);
         memset(tuple, 0, TABLES_TUPLE_SIZE);
         buildTablesTuple(2, "Columns", "Columns", tuple);
-        rbfm.insertRecord(fileHandle, Tables_Descriptor, tuple, rid);
+        rbfm.insertRecord(tablesHandle, Tables_Descriptor, tuple, rid);
         memset(tuple, 0, TABLES_TUPLE_SIZE);
-        fileHandle.closeFile();
+        rbfm.closeFile(tablesHandle);
         delete [] tuple;
 
         // The same thing for columns table
-        rbfm.openFile("Columns", fileHandle);
+        FileHandle columnHandle;
+        rbfm.openFile("Columns", columnHandle);
         tuple = new char [COLUMNS_TUPLE_SIZE];
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
         buildColumnsTuple(1, {"table-id", TypeInt, 4}, 1, tuple);
-        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
         buildColumnsTuple(1, {"table-name", TypeVarChar, 50}, 2, tuple);
-        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
         buildColumnsTuple(1, {"file-name", TypeVarChar, 50}, 3, tuple);
-        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
         buildColumnsTuple(2, {"table-id", TypeInt, 4}, 1, tuple);
-        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
         buildColumnsTuple(2, {"column-name", TypeVarChar, 50}, 2, tuple);
-        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
         buildColumnsTuple(2, {"column-type", TypeInt, 4}, 3, tuple);
-        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
         buildColumnsTuple(2, {"column-length", TypeInt, 4}, 4, tuple);
-        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
 
         buildColumnsTuple(2, {"column-position", TypeInt, 4}, 5, tuple);
-        rbfm.insertRecord(fileHandle, Columns_Descriptor, tuple, rid);
+        rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
         memset(tuple, 0, COLUMNS_TUPLE_SIZE);
-        fileHandle.closeFile();
+        rbfm.closeFile(columnHandle);
+
         // Initialize variable table
+        FileHandle variableHandle;
         char* countData = new char [sizeof(int)+1];
         int initCount = 3;
         memset(countData, 0, sizeof(int));
         memcpy(countData+1, &initCount, sizeof(int));
-        rbfm.openFile("Variables",fileHandle);
-        rbfm.insertRecord(fileHandle, Variables_Descriptor, countData, rid);
+        rbfm.openFile("Variables",variableHandle);
+        rbfm.insertRecord(variableHandle, Variables_Descriptor, countData, rid);
+        rbfm.closeFile(variableHandle);
 
-        fileHandle.closeFile();
         delete [] countData;
         delete [] tuple;
         return 0;
@@ -102,8 +105,8 @@ namespace PeterDB {
 
         if(rbfm.openFile("Tables", tablesHandle)!=0 || rbfm.openFile("Columns", columnHandle))return -1;
         if(rbfm.createFile(tableName)!=0){
-            columnHandle.closeFile();
-            tablesHandle.closeFile();
+            rbfm.closeFile(tablesHandle);
+            rbfm.closeFile(columnHandle);
             return -1;
         }
 
@@ -304,7 +307,8 @@ namespace PeterDB {
     }
 
     RC RM_ScanIterator::close() {
-        return rbfmScanIterator.close();
+//        return rbfmScanIterator.close();
+        return 0;
     }
 
     // Extra credit work

@@ -1445,7 +1445,6 @@ namespace PeterDBTesting {
                 " (tweet_id INT, text VARCHAR(400), user_id INT, sentiment REAL, hash_tags VARCHAR(100), embedded_url VARCHAR(200), lat REAL, lng REAL)");
         ASSERT_NE(rm.createTable(tableName, table_attrs), success)
                                     << "Create table " << tableName << " should fail, table should already exist.";
-
     }
 
     TEST_F(RM_Version_Test, extra_multiple_add_drop_mix) {
