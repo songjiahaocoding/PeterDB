@@ -54,11 +54,7 @@ namespace PeterDBTesting {
 
     }
 
-    TEST_F(RM_Tuple_Test, clean_up){
-        std::cout<< "Clean up"<< std::endl;
-    }
-
-    TEST_F(RM_Tuple_Test, get_attributes)  {
+    TEST_F(RM_Tuple_Test, get_attributes) {
         // Functions Tested
         // 1. getAttributes
 
@@ -77,12 +73,15 @@ namespace PeterDBTesting {
         ASSERT_EQ(attrs[3].name, "salary") << "Attribute is not correct.";
         ASSERT_EQ(attrs[3].type, PeterDB::TypeReal) << "Attribute is not correct.";
         ASSERT_EQ(attrs[3].length, 4) << "Attribute is not correct.";
+
     }
 
     TEST_F(RM_Tuple_Test, insert_and_read_tuple) {
         // Functions tested
         // 1. Insert Tuple
         // 2. Read Tuple
+
+
         size_t tupleSize = 0;
         inBuffer = malloc(200);
         outBuffer = malloc(200);
@@ -220,6 +219,7 @@ namespace PeterDBTesting {
         // Check the returned tuple
         ASSERT_EQ(memcmp(inBuffer, outBuffer, updatedTupleSize), 0)
                                     << "The returned tuple is not the same as the updated.";
+
     }
 
     TEST_F(RM_Tuple_Test, read_attribute) {
@@ -661,7 +661,7 @@ namespace PeterDBTesting {
             }
             unsigned attr25 = *(unsigned *) ((uint8_t *) outBuffer + offset + nullAttributesIndicatorActualSize);
 
-            ASSERT_EQ(attr29, attr25 + 1);
+            ASSERT_EQ(attr29, attr25 + 1) << count;
             free(attr15);
             count++;
             memset(outBuffer, 0, bufSize);
@@ -973,6 +973,7 @@ namespace PeterDBTesting {
         for (int i = 0; i < numTuples; i = i + 10) {
             unsigned attrID = dist8(generator);
             validateAttribute(attrID, i, i, i + 100);
+
         }
     }
 
@@ -1445,6 +1446,7 @@ namespace PeterDBTesting {
                 " (tweet_id INT, text VARCHAR(400), user_id INT, sentiment REAL, hash_tags VARCHAR(100), embedded_url VARCHAR(200), lat REAL, lng REAL)");
         ASSERT_NE(rm.createTable(tableName, table_attrs), success)
                                     << "Create table " << tableName << " should fail, table should already exist.";
+
     }
 
     TEST_F(RM_Version_Test, extra_multiple_add_drop_mix) {

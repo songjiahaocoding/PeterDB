@@ -11,7 +11,7 @@
 
 namespace PeterDB {
 
-    #define TOMB_SIZE sizeof(unsigned) + sizeof(short)+INDEX_SIZE
+    #define TOMB_SIZE sizeof(unsigned) + sizeof(short)*2
 
 
     // Record ID
@@ -219,7 +219,7 @@ namespace PeterDB {
 
         void writeSlotInfo(unsigned slotNum, const char *data, std::pair<unsigned , unsigned > slot);
 
-        void shiftRecord(char *data, unsigned offset, unsigned size, unsigned shiftOffset, unsigned len);
+        void shiftRecord(char *data, unsigned offset, long size, unsigned shiftOffset, unsigned len);
 
         void writeUpdateInfo(FileHandle &fileHandle, unsigned *info, std::pair<unsigned , unsigned> slot, unsigned size,
                         unsigned oldSize, const RID &rid, char *pageData);

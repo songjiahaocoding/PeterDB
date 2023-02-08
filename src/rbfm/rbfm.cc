@@ -327,7 +327,7 @@ namespace PeterDB {
         getInfo(pageData, info);
         insertTomb(data_offset, cpy.pageNum, cpy.slotNum);
         shiftRecord(pageData, slot.first, TOMB_SIZE, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
-        writeUpdateInfo(fileHandle, info, slot, TOMB_SIZE, oldRecord.size, rid, pageData);
+        writeUpdateInfo(fileHandle, info, slot, TOMB_SIZE, oldRecord.size+sizeof(RID), rid, pageData);
 
         delete [] pageData;
         delete [] info;
@@ -343,7 +343,7 @@ namespace PeterDB {
         fileHandle.writePage(rid.pageNum, pageData);
     }
 
-    void RecordBasedFileManager::shiftRecord(char* data, unsigned offset, unsigned size, unsigned shiftOffset, unsigned len){
+    void RecordBasedFileManager::shiftRecord(char* data, unsigned offset, long size, unsigned shiftOffset, unsigned len){
         auto data_offset = data+offset;
         memmove(data_offset+size, data_offset+shiftOffset, len);
         auto info = new unsigned [PAGE_INFO_NUM];
@@ -352,7 +352,7 @@ namespace PeterDB {
             auto slot = getSlotInfo(i, data);
             if(slot.first==5000)continue;
             if(slot.first>offset){
-                slot.first-=shiftOffset-size;
+                slot.first -= shiftOffset-size;
                 writeSlotInfo(i, data, slot);
             }
         }
@@ -591,6 +591,15 @@ namespace PeterDB {
             // Judge if the current record match
             auto slot = rbfm.getSlotInfo(currentSlotNum, pageData);
             char* recordData = pageData + slot.first;
+            if(slot.first==5000){
+                if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1){
+                    delete [] pageData;
+                    delete [] attrValue;
+                    delete [] info;
+                    return RBFM_EOF;
+                }
+                continue;
+            }
             memset(attrValue, 0, attrLength+1);
             rid.pageNum = currentPageNum;
             rid.slotNum = currentSlotNum;
@@ -599,6 +608,15 @@ namespace PeterDB {
                 found = true;
                 char* res = (char*)data;
                 char* recordBody = new char[slot.second];
+                if(rbfm.isTomb(recordData)){
+                    if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1){
+                        delete [] pageData;
+                        delete [] attrValue;
+                        delete [] info;
+                        return RBFM_EOF;
+                    }
+                    continue;
+                }
                 rbfm.fetchRecord(slot.first, slot.second, recordBody, pageData);
                 Record record(descriptor, recordBody, rid);
                 // Include a null indicator to the returned data
