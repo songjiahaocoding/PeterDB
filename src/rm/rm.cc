@@ -205,6 +205,7 @@ namespace PeterDB {
             fileHandle.closeFile();
             return 0;
         }
+        fileHandle.closeFile();
         return -1;
     }
 
@@ -220,6 +221,7 @@ namespace PeterDB {
             fileHandle.closeFile();
             return 0;
         }
+        fileHandle.closeFile();
         return -1;
     }
 
@@ -236,6 +238,7 @@ namespace PeterDB {
             fileHandle.closeFile();
             return 0;
         }
+        fileHandle.closeFile();
         return -1;
     }
 
@@ -420,12 +423,11 @@ namespace PeterDB {
         memset(data, 0, sizeof(int)+1);
         rbfmScanIterator.getNextRecord(rid, data);
         tableID = *(int*)(data+1);
-        tablesHandle.closeFile();
+        rbfm.closeFile(tablesHandle);
         delete [] condition;
         delete [] data;
         return tableID;
     }
-
 
     RM_IndexScanIterator::RM_IndexScanIterator() = default;
 
