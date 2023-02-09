@@ -222,8 +222,8 @@ namespace PeterDB {
 
         void shiftRecord(char *data, unsigned offset, long size, unsigned shiftOffset, unsigned len);
 
-        void writeUpdateInfo(FileHandle &fileHandle, unsigned *info, std::pair<unsigned , unsigned> slot, unsigned size,
-                        unsigned oldSize, const RID &rid, char *pageData);
+        void writeUpdateInfo(FileHandle &fileHandle, unsigned *info, std::pair<unsigned , unsigned> slot, int size,
+                        int oldSize, const RID &rid, char *pageData);
 
         unsigned getSlotNum(char *pageData);
 
