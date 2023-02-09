@@ -598,6 +598,7 @@ namespace PeterDB {
                     delete [] info;
                     return RBFM_EOF;
                 }
+                delete [] info;
                 continue;
             }
             memset(attrValue, 0, attrLength+1);
