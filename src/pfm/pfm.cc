@@ -161,6 +161,7 @@ namespace PeterDB {
 
     void infoPage::readInfoPage(FILE* file) {
         char* data = new char [sizeof(unsigned)*INFO_NUM];
+        memset(data, 0, sizeof(unsigned)*INFO_NUM);
         fseek(file, 0, SEEK_SET);
         fread(data, sizeof(unsigned)*INFO_NUM, 1, file);
         auto* value = (unsigned*)data;

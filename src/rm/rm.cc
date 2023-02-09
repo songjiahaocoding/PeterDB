@@ -111,6 +111,7 @@ namespace PeterDB {
         }
 
         char* tuple = new char [TABLES_TUPLE_SIZE];
+        memset(tuple, 0, TABLES_TUPLE_SIZE);
         int tableID = getTableCount() + 1;
         buildTablesTuple(tableID, tableName, tableName, tuple);
         rbfm.insertRecord(tablesHandle, Tables_Descriptor, tuple, rid);
@@ -118,6 +119,7 @@ namespace PeterDB {
         // Insert Columns data
         delete [] tuple;
         tuple = new char [COLUMNS_TUPLE_SIZE];
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
         for(int i = 0 ; i < attrs.size() ; i++) {
             memset(tuple, 0, COLUMNS_TUPLE_SIZE);
             buildColumnsTuple(tableID, attrs[i], i+1, tuple);
@@ -148,6 +150,7 @@ namespace PeterDB {
         RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
         RBFM_ScanIterator tableIterator;
         char* tableID = new char [sizeof (int)];
+        memset(tableID, 0, sizeof(int));
         RID rid;
         FileHandle tableFileHandle;
         FileHandle columnFileHandle;
@@ -157,6 +160,7 @@ namespace PeterDB {
         }
         int size = tableName.size();
         char* condition = new char [sizeof(int)+size];
+        memset(condition, 0, sizeof(int)+size);
         memcpy(condition, &size, sizeof(int));
         memcpy(condition+sizeof(int), tableName.c_str(), size);
         rbfm.scan(tableFileHandle, Tables_Descriptor, "table-name", EQ_OP, condition, {"table-id"}, tableIterator);
@@ -412,6 +416,7 @@ namespace PeterDB {
         FileHandle fileHandle;
         int count = 0;
         char* countData = new char [sizeof(int)+1];
+        memset(countData, 0, sizeof(int)+1);
         rbfm.openFile("Variables",fileHandle);
         rbfm.readRecord(fileHandle, Variables_Descriptor, {0,0}, countData);
         fileHandle.closeFile();
