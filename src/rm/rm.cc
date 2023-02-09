@@ -417,9 +417,12 @@ namespace PeterDB {
         rbfm.scan(tablesHandle, Tables_Descriptor, "table-name", EQ_OP, condition, {{"table-id"}}, rbfmScanIterator);
         RID rid;
         char* data = new char [sizeof(int)+1];
+        memset(data, 0, sizeof(int)+1);
         rbfmScanIterator.getNextRecord(rid, data);
         tableID = *(int*)(data+1);
         tablesHandle.closeFile();
+        delete [] condition;
+        delete [] data;
         return tableID;
     }
 

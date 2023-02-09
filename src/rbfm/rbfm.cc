@@ -743,8 +743,8 @@ namespace PeterDB {
                 case TypeVarChar:
                     unsigned size;
                     memcpy(&size, value, sizeof(unsigned));
-                    this->conditionVal = new char [size+sizeof(unsigned)];
-                    memset(this->conditionVal, 0, size+sizeof(unsigned ));
+                    this->conditionVal = new char [size+sizeof(unsigned)+1];
+                    memset(this->conditionVal, 0, size+sizeof(unsigned )+1);
                     memcpy(this->conditionVal, value, size+sizeof(unsigned ));
                     break;
                 default:
