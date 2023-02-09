@@ -613,9 +613,7 @@ namespace PeterDBTesting {
         for (unsigned i = numTuplesToDelete; i < numTuples; i++) {
             ASSERT_EQ(rm.readTuple(tableName, rids[i], outBuffer), success)
                                         << "RelationManager::readTuple() should succeed.";
-
         }
-
     }
 
     TEST_F(RM_Large_Table_Test, scan_large_tuples) {
@@ -1062,7 +1060,7 @@ namespace PeterDBTesting {
 
         }
 
-        ASSERT_TRUE(user_ids.empty()) << "returned user_id does not match inserted";
+        ASSERT_TRUE(user_ids.empty()) << "returned user_id does not match inserted" << user_ids.size();
 
     }
 
@@ -1726,6 +1724,5 @@ namespace PeterDBTesting {
         checkPrintRecord("emp_name: Peter Anteater, age: 34, height: 175.3, salary: 24123.90, ssn: 123479765",
                          stream.str());
     }
-
 
 } // namespace PeterDBTesting

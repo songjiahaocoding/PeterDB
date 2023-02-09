@@ -159,6 +159,8 @@ namespace PeterDB {
         int getTableCount();
 
         void addTableCount();
+
+        int getTableID(const std::string &tableName);
     };
 
 } // namespace PeterDB

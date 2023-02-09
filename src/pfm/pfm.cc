@@ -124,9 +124,12 @@ namespace PeterDB {
     }
 
     RC FileHandle::openFile(const std::string& fileName) {
-        if(handlingFile()){
-            std::cout << "This FileHandle is handling another file." << std::endl;
-            return -1;
+//        if(handlingFile()){
+//            std::cout << "This FileHandle is handling another file." << std::endl;
+//            return -1;
+//        }
+        if(file!= nullptr) {
+            fclose(file);
         }
         file = fopen(fileName.c_str(), "r+b");
         if(!handlingFile()){

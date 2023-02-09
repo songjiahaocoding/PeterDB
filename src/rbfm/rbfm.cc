@@ -600,7 +600,6 @@ namespace PeterDB {
             rbfm.getInfo(pageData, info);
             // Judge if the current record match
             auto slot = rbfm.getSlotInfo(currentSlotNum, pageData);
-            char* recordData = pageData + slot.first;
             if(slot.first==5000){
                 if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1){
                     delete [] pageData;
@@ -611,22 +610,23 @@ namespace PeterDB {
                 delete [] info;
                 continue;
             }
+            char* recordData = pageData + slot.first;
+            if(rbfm.isTomb(recordData)){
+                if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1){
+                    delete [] pageData;
+                    delete [] attrValue;
+                    delete [] info;
+                    return RBFM_EOF;
+                }
+                continue;
+            }
             memset(attrValue, 0, attrLength+1);
             rid.pageNum = currentPageNum;
             rid.slotNum = currentSlotNum;
             rbfm.readAttribute(*fileHandle, descriptor, rid, conditionAttribute, attrValue);
             if(isMatch(recordData, attrValue+1)){
-                found = true;
                 char* res = (char*)data;
-                if(rbfm.isTomb(recordData)){
-                    if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1){
-                        delete [] pageData;
-                        delete [] attrValue;
-                        delete [] info;
-                        return RBFM_EOF;
-                    }
-                    continue;
-                }
+                found = true;
                 char* recordBody = new char[slot.second];
                 memset(recordBody, 0, slot.second);
                 rbfm.fetchRecord(slot.first, slot.second, recordBody, pageData);
@@ -654,6 +654,7 @@ namespace PeterDB {
                     memcpy(res, attrPos, attrSize);
                     res += attrSize;
                 }
+                rid = readRID(recordData, slot.second);
                 moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM]);
                 delete [] recordBody;
                 delete [] info;
@@ -674,6 +675,14 @@ namespace PeterDB {
         }
         return -1;
     }
+
+    RID RBFM_ScanIterator::readRID(char* recordData, int offset){
+        RID rid;
+        memcpy(&rid, recordData+offset-sizeof(RID), sizeof(RID));
+
+        return rid;
+    }
+
 
     RC RBFM_ScanIterator::moveToNext(unsigned pageNum, unsigned slotNum){
         currentSlotNum++;
@@ -779,27 +788,27 @@ namespace PeterDB {
 
                 switch (commOp) {
                     case EQ_OP: {
-                        res = strcmp(attrValue, conditionVal)==0;
+                        res = strcmp(attrValue+4, conditionVal+4)==0;
                         break;
                     }
                     case LT_OP: {
-                        res = strcmp(attrValue, conditionVal)<0;
+                        res = strcmp(attrValue+4, conditionVal+4)<0;
                         break;
                     }
                     case LE_OP: {
-                        res = strcmp(attrValue, conditionVal)<=0;
+                        res = strcmp(attrValue+4, conditionVal+4)<=0;
                         break;
                     }
                     case GT_OP: {
-                        res = strcmp(attrValue, conditionVal)>0;
+                        res = strcmp(attrValue+4, conditionVal+4)>0;
                         break;
                     }
                     case GE_OP: {
-                        res = strcmp(attrValue, conditionVal)>=0;
+                        res = strcmp(attrValue+4, conditionVal+4)>=0;
                         break;
                     }
                     case NE_OP: {
-                        res = strcmp(attrValue, conditionVal)!=0;
+                        res = strcmp(attrValue+4, conditionVal+4)!=0;
                         break;
                     }
                 }

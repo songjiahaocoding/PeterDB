@@ -13,7 +13,6 @@ namespace PeterDB {
 
     #define TOMB_SIZE sizeof(unsigned) + sizeof(short)*2
 
-
     // Record ID
     typedef struct {
         unsigned pageNum;           // page number
@@ -116,6 +115,8 @@ namespace PeterDB {
         void setBit(char &src, bool value, unsigned int offset);
 
         void getByteOffset(unsigned int pos, unsigned int &bytes, unsigned int &offset);
+
+        RID readRID(char *recordData, int offset);
     };
 
     class RecordBasedFileManager {

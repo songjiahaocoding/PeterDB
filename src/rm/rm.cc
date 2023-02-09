@@ -1,5 +1,6 @@
 #include "src/include/rm.h"
 #include <cstring>
+#include <iostream>
 
 namespace PeterDB {
     RelationManager &RelationManager::instance() {
@@ -149,8 +150,7 @@ namespace PeterDB {
         memset(columnData, 0, COLUMNS_TUPLE_SIZE);
         RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
         RBFM_ScanIterator tableIterator;
-        char* tableID = new char [sizeof (int)];
-        memset(tableID, 0, sizeof(int));
+
         RID rid;
         FileHandle tableFileHandle;
         FileHandle columnFileHandle;
@@ -158,20 +158,11 @@ namespace PeterDB {
         if (rbfm.openFile("Tables", tableFileHandle) != 0 || rbfm.openFile("Columns", columnFileHandle) != 0) {
             return -1;
         }
-        int size = tableName.size();
-        char* condition = new char [sizeof(int)+size];
-        memset(condition, 0, sizeof(int)+size);
-        memcpy(condition, &size, sizeof(int));
-        memcpy(condition+sizeof(int), tableName.c_str(), size);
-        rbfm.scan(tableFileHandle, Tables_Descriptor, "table-name", EQ_OP, condition, {"table-id"}, tableIterator);
-        if(tableIterator.getNextRecord(rid, tableData)==-1){
-            return -1;
-        }
-        memcpy(tableID, tableData+1, sizeof(int));
+        auto tableID = getTableID(tableName);
 
         RBFM_ScanIterator columnsIterator;
 
-        rbfm.scan(columnFileHandle, Columns_Descriptor, "table-id", EQ_OP, tableID, {"column-name","column-type","column-length"}, columnsIterator);
+        rbfm.scan(columnFileHandle, Columns_Descriptor, "table-id", EQ_OP, &tableID, {"column-name","column-type","column-length"}, columnsIterator);
 
         while(columnsIterator.getNextRecord(rid, columnData)!=-1){
             char* column = columnData;
@@ -194,9 +185,7 @@ namespace PeterDB {
         }
 
         delete [] columnData;
-        delete [] tableID;
         delete [] tableData;
-        delete [] condition;
         columnFileHandle.closeFile();
         tableFileHandle.closeFile();
         return 0;
@@ -317,12 +306,40 @@ namespace PeterDB {
 
     // Extra credit work
     RC RelationManager::dropAttribute(const std::string &tableName, const std::string &attributeName) {
-        return -1;
+        FileHandle columnHandle;
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        RBFM_ScanIterator rbfmScanIterator;
+        rbfm.openFile("Columns", columnHandle);
+        int size = attributeName.size();
+        char* condition = new char [sizeof(int)+size];
+        memset(condition, 0, sizeof(int)+size);
+        memcpy(condition, &size, sizeof(int));
+        memcpy(condition+sizeof(int), attributeName.c_str(), size);
+        rbfm.scan(columnHandle, Columns_Descriptor, "column-name", EQ_OP, condition, {{"table-id"}}, rbfmScanIterator);
+        RID rid;
+        char* tuple = new char [COLUMNS_TUPLE_SIZE];
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+        rbfmScanIterator.getNextRecord(rid, tuple);
+
+        if(rbfm.deleteRecord(columnHandle, Columns_Descriptor, rid)){
+            std::cout <<"Error when deleting"<< std::endl;
+        }
+        return 0;
     }
 
     // Extra credit work
     RC RelationManager::addAttribute(const std::string &tableName, const Attribute &attr) {
-        return -1;
+        auto id = getTableID(tableName);
+        FileHandle columnHandle;
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        rbfm.openFile("Columns", columnHandle);
+        char* tuple = new char [COLUMNS_TUPLE_SIZE];
+        memset(tuple, 0, COLUMNS_TUPLE_SIZE);
+        buildColumnsTuple(id, attr, 0, tuple);
+        RID rid;
+        rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
+        columnHandle.closeFile();
+        return 0;
     }
 
     // QE IX related
@@ -383,6 +400,27 @@ namespace PeterDB {
         memcpy(ptr, &columnLength, sizeof(unsigned));
         ptr+=sizeof(unsigned);
         memcpy(ptr, &columnPos, sizeof(int));
+    }
+
+    int RelationManager::getTableID(const std::string &tableName){
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        FileHandle tablesHandle;
+
+        rbfm.openFile("Tables", tablesHandle);
+        int tableID = 0;
+        RBFM_ScanIterator rbfmScanIterator;
+        int size = tableName.size();
+        char* condition = new char [sizeof(int)+size];
+        memset(condition, 0, sizeof(int)+size);
+        memcpy(condition, &size, sizeof(int));
+        memcpy(condition+sizeof(int), tableName.c_str(), size);
+        rbfm.scan(tablesHandle, Tables_Descriptor, "table-name", EQ_OP, condition, {{"table-id"}}, rbfmScanIterator);
+        RID rid;
+        char* data = new char [sizeof(int)+1];
+        rbfmScanIterator.getNextRecord(rid, data);
+        tableID = *(int*)(data+1);
+        tablesHandle.closeFile();
+        return tableID;
     }
 
 
