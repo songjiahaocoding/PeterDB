@@ -215,6 +215,7 @@ namespace PeterDB {
         getAttributes(tableName,attrs);
         if (rbfm.openFile(tableName, fileHandle) == 0) {
             if(rbfm.deleteRecord(fileHandle, attrs, rid) != 0) {
+                fileHandle.closeFile();
                 return -1;
             }
             fileHandle.closeFile();
@@ -250,6 +251,7 @@ namespace PeterDB {
         if (rbfm.readRecord(fileHandle, attrs, rid, data) != 0 ) {
             return -1;
         }
+        fileHandle.closeFile();
         return 0;
     }
 
