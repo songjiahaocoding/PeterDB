@@ -205,7 +205,6 @@ namespace PeterDB {
             fileHandle.closeFile();
             return 0;
         }
-        fileHandle.closeFile();
         return -1;
     }
 
@@ -221,7 +220,6 @@ namespace PeterDB {
             fileHandle.closeFile();
             return 0;
         }
-        fileHandle.closeFile();
         return -1;
     }
 
@@ -238,7 +236,6 @@ namespace PeterDB {
             fileHandle.closeFile();
             return 0;
         }
-        fileHandle.closeFile();
         return -1;
     }
 
@@ -253,7 +250,6 @@ namespace PeterDB {
         if (rbfm.readRecord(fileHandle, attrs, rid, data) != 0 ) {
             return -1;
         }
-        fileHandle.closeFile();
         return 0;
     }
 
