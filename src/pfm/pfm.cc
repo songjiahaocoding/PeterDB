@@ -25,7 +25,6 @@ namespace PeterDB {
     RC PagedFileManager::createFile(const std::string &fileName) {
         FILE* file = fopen(fileName.c_str(), "r");
         if(!file){
-            fclose(file);
             file = fopen(fileName.c_str(), "wb");
             if(file){
                 //std::cout << "Create " << fileName << std::endl;
