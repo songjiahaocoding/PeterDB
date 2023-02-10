@@ -104,7 +104,9 @@ namespace PeterDB {
         FileHandle columnHandle;
         RID rid;
 
-        if(rbfm.openFile("Tables", tablesHandle)!=0 || rbfm.openFile("Columns", columnHandle))return -1;
+        if(rbfm.openFile("Tables", tablesHandle)!=0 || rbfm.openFile("Columns", columnHandle)){
+            return -1;
+        }
         if(rbfm.createFile(tableName)!=0){
             rbfm.closeFile(tablesHandle);
             rbfm.closeFile(columnHandle);
@@ -181,7 +183,7 @@ namespace PeterDB {
         }
 
         delete [] columnData;
-        columnFileHandle.closeFile();
+        columnsIterator.close();
         return 0;
     }
 
@@ -207,6 +209,7 @@ namespace PeterDB {
         FileHandle fileHandle;
         std::vector<Attribute> attrs;
         getAttributes(tableName,attrs);
+
         if (rbfm.openFile(tableName, fileHandle) == 0) {
             if(rbfm.deleteRecord(fileHandle, attrs, rid) != 0) {
                 fileHandle.closeFile();
@@ -239,14 +242,15 @@ namespace PeterDB {
         FileHandle fileHandle;
         std::vector<Attribute> attrs;
         getAttributes(tableName,attrs);
-        if (rbfm.openFile(tableName, fileHandle) != 0) {
-            return -1;
+
+        if (rbfm.openFile(tableName, fileHandle) == 0) {
+            if (rbfm.readRecord(fileHandle, attrs, rid, data) != 0 ) {
+                return -1;
+            }
+            fileHandle.closeFile();
+            return 0;
         }
-        if (rbfm.readRecord(fileHandle, attrs, rid, data) != 0 ) {
-            return -1;
-        }
-        fileHandle.closeFile();
-        return 0;
+        return -1;
     }
 
     RC RelationManager::printTuple(const std::vector<Attribute> &attrs, const void *data, std::ostream &out) {
@@ -263,7 +267,7 @@ namespace PeterDB {
         getAttributes(tableName,attrs);
         if (rbfm.openFile(tableName, fileHandle) == 0 &&
             rbfm.readAttribute(fileHandle, attrs, rid, attributeName, data) == 0 ) {
-            fileHandle.closeFile();
+            rbfm.closeFile(fileHandle);
             return 0;
         }
         return -1;
@@ -278,15 +282,14 @@ namespace PeterDB {
         RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
         std::vector<Attribute> attrs;
         this->getAttributes(tableName,attrs);
-
         RC rc;
-        FileHandle fileHandle;
-        rc = rbfm.openFile(tableName, rm_ScanIterator.fileHandle);
+        FileHandle *fileHandle = new FileHandle();
+        rc = rbfm.openFile(tableName, *fileHandle);
         if( rc != 0) {
             return -1;
         }
 
-        rc = rbfm.scan(rm_ScanIterator.fileHandle, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator);
+        rc = rbfm.scan(*fileHandle, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator);
         return rc;
     }
 
@@ -295,8 +298,7 @@ namespace PeterDB {
     }
 
     RC RM_ScanIterator::close() {
-//        return rbfmScanIterator.close();
-        return 0;
+        return rbfmScanIterator.close();
     }
 
     // Extra credit work
@@ -319,6 +321,7 @@ namespace PeterDB {
         if(rbfm.deleteRecord(columnHandle, Columns_Descriptor, rid)){
             std::cout <<"Error when deleting"<< std::endl;
         }
+        rbfmScanIterator.close();
         return 0;
     }
 
@@ -333,7 +336,7 @@ namespace PeterDB {
         buildColumnsTuple(id, attr, 0, tuple);
         RID rid;
         rbfm.insertRecord(columnHandle, Columns_Descriptor, tuple, rid);
-        columnHandle.closeFile();
+        rbfm.closeFile(columnHandle);
 
         delete [] tuple;
         return 0;
@@ -418,7 +421,7 @@ namespace PeterDB {
         rbfmScanIterator.getNextRecord(rid, data);
         tableID = *(int*)(data+1);
 
-        rbfm.closeFile(tablesHandle);
+        rbfmScanIterator.close();
         delete [] condition;
         delete [] data;
         return tableID;
@@ -445,7 +448,7 @@ namespace PeterDB {
         memcpy(countData+1, &count, sizeof(int));
         rbfm.openFile("Variables",varFile);
         rbfm.updateRecord(varFile, Variables_Descriptor, countData, {0,0});
-        varFile.closeFile();
+        rbfm.closeFile(varFile);
         delete [] countData;
     }
 
@@ -457,7 +460,7 @@ namespace PeterDB {
         memset(countData, 0, sizeof(int)+1);
         rbfm.openFile("Variables",fileHandle);
         rbfm.readRecord(fileHandle, Variables_Descriptor, {0,0}, countData);
-        fileHandle.closeFile();
+        rbfm.closeFile(fileHandle);
         memcpy(&count, countData+1, sizeof(int));
         delete[] countData;
         return count;

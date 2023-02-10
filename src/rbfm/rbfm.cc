@@ -261,11 +261,6 @@ namespace PeterDB {
         if(isTomb(data_offset)){
             // Tomb Handler:
             //  Recursively delete the pointer chain
-            RID pointRID = getPointRID(data_offset);
-            if(pointRID.pageNum==0&&pointRID.slotNum==14){
-                std::cout<< "Found!"<< std::endl;
-                std::cout<< "Previous RID page: "<< rid.pageNum << " slot: " << rid.slotNum << std::endl;
-            }
             deleteRecord(fileHandle, recordDescriptor, getPointRID(data_offset));
         }
         delete [] pageData;

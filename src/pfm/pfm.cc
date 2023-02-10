@@ -1,6 +1,8 @@
 #include <iostream>
 #include "src/include/pfm.h"
 #include <cstring>
+#include <errno.h>
+
 
 namespace PeterDB {
     // Meyers' Singleton
@@ -23,6 +25,7 @@ namespace PeterDB {
     RC PagedFileManager::createFile(const std::string &fileName) {
         FILE* file = fopen(fileName.c_str(), "r");
         if(!file){
+            fclose(file);
             file = fopen(fileName.c_str(), "wb");
             if(file){
                 //std::cout << "Create " << fileName << std::endl;
@@ -60,7 +63,6 @@ namespace PeterDB {
 
     RC PagedFileManager::closeFile(FileHandle &fileHandle) {
         // Error: The handler is not handling any file
-        if(!fileHandle.handlingFile())return -1;
         return fileHandle.closeFile();
     }
 
@@ -124,17 +126,13 @@ namespace PeterDB {
     }
 
     RC FileHandle::openFile(const std::string& fileName) {
-//        if(handlingFile()){
-//            std::cout << "This FileHandle is handling another file." << std::endl;
-//            return -1;
-//        }
-        if(file!= nullptr) {
-            fclose(file);
-            file = nullptr;
+        if(handlingFile()){
+            std::cout << "This FileHandle is handling another file." << std::endl;
+            return -1;
         }
         file = fopen(fileName.c_str(), "r+b");
         if(!handlingFile()){
-            std::cout << "Error cannot open the file " << fileName << std::endl;
+            std::cout << "Error "<< errno <<  " cannot open the file " << fileName << std::endl;
             return -1;
         } else {
             infoPage = new class infoPage();
