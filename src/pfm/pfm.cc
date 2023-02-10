@@ -133,13 +133,13 @@ namespace PeterDB {
             file = nullptr;
         }
         file = fopen(fileName.c_str(), "r+b");
-//        if(!handlingFile()){
-//            std::cout << "Error cannot open the file " << fileName << std::endl;
-//            return -1;
-//        } else {
+        if(!handlingFile()){
+            std::cout << "Error cannot open the file " << fileName << std::endl;
+            return -1;
+        } else {
             infoPage = new class infoPage();
             infoPage -> readInfoPage(file);
-//        }
+        }
         return 0;
     }
 
