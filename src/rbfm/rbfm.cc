@@ -595,7 +595,13 @@ namespace PeterDB {
         bool found = false;
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
         char* pageData = new char [PAGE_SIZE];
-        char* attrValue = new char [attrLength+1];
+        char* attrValue;
+        if(attrType==TypeVarChar){
+            attrValue = new char [attrLength+sizeof(int)+1];
+        }else {
+            attrValue = new char [attrLength+1];
+        }
+
         while(!found){
             // Initialize data
             memset(pageData, 0, PAGE_SIZE);
