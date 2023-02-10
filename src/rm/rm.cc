@@ -245,7 +245,7 @@ namespace PeterDB {
         if (rbfm.readRecord(fileHandle, attrs, rid, data) != 0 ) {
             return -1;
         }
-        fileHandle.closeFile();
+        rbfm.closeFile(fileHandle);
         return 0;
     }
 
@@ -280,7 +280,6 @@ namespace PeterDB {
         this->getAttributes(tableName,attrs);
 
         RC rc;
-        FileHandle fileHandle;
         rc = rbfm.openFile(tableName, rm_ScanIterator.fileHandle);
         if( rc != 0) {
             return -1;
@@ -295,8 +294,7 @@ namespace PeterDB {
     }
 
     RC RM_ScanIterator::close() {
-//        return rbfmScanIterator.close();
-        return 0;
+        return rbfmScanIterator.close();
     }
 
     // Extra credit work
@@ -418,7 +416,7 @@ namespace PeterDB {
         rbfmScanIterator.getNextRecord(rid, data);
         tableID = *(int*)(data+1);
 
-        rbfm.closeFile(tablesHandle);
+        rbfmScanIterator.close();
         delete [] condition;
         delete [] data;
         return tableID;

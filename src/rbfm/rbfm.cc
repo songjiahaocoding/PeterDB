@@ -703,7 +703,9 @@ namespace PeterDB {
     }
 
     RC RBFM_ScanIterator::close() {
-        fileHandle->closeFile();
+        if(fileHandle){
+            fileHandle->closeFile();
+        }
         delete [] conditionVal;
         return 0;
     }
