@@ -268,7 +268,7 @@ namespace PeterDB {
         memset(pageData, 0, PAGE_SIZE);
         fileHandle.readPage(rid.pageNum, pageData);
         // shift record data to reuse empty space
-        memset(data_offset, 0, slot.second);
+        memset(pageData+slot.first, 0, slot.second);
         shiftRecord(pageData, slot.first, 0, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
         info[DATA_OFFSET] -= slot.second;
         slot.first = DELETE_MARK;
