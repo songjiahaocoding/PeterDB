@@ -442,7 +442,7 @@ namespace PeterDB {
         short int flag_size = std::ceil( static_cast<double>(recordDescriptor.size()) /CHAR_BIT);
         auto indexPos = recordData+FIELD_NUM_SIZE+flag_size;
         auto attrIndexPos = indexPos+INDEX_SIZE*id;
-        int offset;
+        int offset = 0;
         memcpy(&offset, attrIndexPos, INDEX_SIZE);
         return offset;
     }
