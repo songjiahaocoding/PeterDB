@@ -637,6 +637,17 @@ namespace PeterDB {
             rid.pageNum = currentPageNum;
             rid.slotNum = currentSlotNum;
             rbfm.readAttribute(*fileHandle, descriptor, rid, conditionAttribute, attrValue);
+            char nullId = attrValue[0];
+            if(nullId==-128&&commOp!=NO_OP){
+                if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1){
+                    delete [] pageData;
+                    delete [] attrValue;
+                    delete [] info;
+                    return RBFM_EOF;
+                }
+                delete [] info;
+                continue;
+            }
             if(isMatch(recordData, attrValue+1)){
                 char* res = (char*)data;
                 found = true;
@@ -710,7 +721,11 @@ namespace PeterDB {
     }
 
     RC RBFM_ScanIterator::close() {
-        fileHandle->closeFile();
+        if(this->fileHandle){
+            this->fileHandle->closeFile();
+        }
+        this->currentSlotNum = 0;
+        this->currentPageNum = 0;
         delete [] conditionVal;
         return 0;
     }

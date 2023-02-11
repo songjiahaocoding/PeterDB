@@ -1155,11 +1155,12 @@ namespace PeterDBTesting {
         ASSERT_EQ(rm.scan(tableName, "sentiment", PeterDB::LE_OP, &targetSentiment, attributes, rmsi), success)
                                     << "relationManager::scan() should succeed.";
 
+        int cnt = 0;
         while (rmsi.getNextTuple(rid, outBuffer) != RM_EOF) {
-
+            cnt++;
             unsigned tweetIdReturned = *(unsigned *) ((char *) outBuffer + 1);
             auto targetTweetId = std::find(tweet_ids.begin(), tweet_ids.end(), tweetIdReturned);
-            ASSERT_NE(targetTweetId, tweet_ids.end()) << "returned tweet_id value is not from inserted.";
+            ASSERT_NE(targetTweetId, tweet_ids.end()) << "returned tweet_id value is not from inserted. "<<cnt;
             tweet_ids.erase(targetTweetId);
 
         }
