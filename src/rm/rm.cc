@@ -181,7 +181,7 @@ namespace PeterDB {
         }
 
         delete [] columnData;
-        columnFileHandle.closeFile();
+        columnsIterator.close();
         return 0;
     }
 
@@ -317,6 +317,7 @@ namespace PeterDB {
         if(rbfm.deleteRecord(columnHandle, Columns_Descriptor, rid)){
             std::cout <<"Error when deleting"<< std::endl;
         }
+        rbfmScanIterator.close();
         return 0;
     }
 

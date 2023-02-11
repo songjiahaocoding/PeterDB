@@ -263,8 +263,7 @@ namespace PeterDB {
             //  Recursively delete the pointer chain
             deleteRecord(fileHandle, recordDescriptor, getPointRID(data_offset));
         }
-        delete [] pageData;
-        pageData = new char [PAGE_SIZE];
+        // Read updated page data
         memset(pageData, 0, PAGE_SIZE);
         fileHandle.readPage(rid.pageNum, pageData);
         // shift record data to reuse empty space
@@ -334,7 +333,9 @@ namespace PeterDB {
         memset(pageData, 0, PAGE_SIZE);
         fileHandle.readPage(cpy.pageNum, pageData);
         cpy.slotNum = getSlotNum(pageData);
+
         writeRecord(record, fileHandle, cpy.pageNum, cpy, pageData);
+        memset(pageData, 0, PAGE_SIZE);
         fileHandle.readPage(rid.pageNum, pageData);
         getInfo(pageData, info);
         insertTomb(data_offset, cpy.pageNum, cpy.slotNum);
@@ -412,8 +413,6 @@ namespace PeterDB {
         auto attrPos = recordData+offset;
         switch (recordDescriptor.at(id).type) {
             case TypeInt:
-                memcpy((char*)data+1, attrPos, sizeof(int));
-                break;
             case TypeReal:
                 memcpy((char*)data+1, attrPos, sizeof(float));
                 break;
@@ -707,7 +706,6 @@ namespace PeterDB {
         return rid;
     }
 
-
     RC RBFM_ScanIterator::moveToNext(unsigned pageNum, unsigned slotNum){
         currentSlotNum++;
         if(currentSlotNum>=slotNum){
@@ -806,7 +804,7 @@ namespace PeterDB {
                     case LE_OP: return val <= condition;
                     case GT_OP: return val > condition;
                     case GE_OP: return val >= condition;
-                    case NE_OP: return val != condition;
+                    case NE_OP: return (val-condition)>FLOAT_DIFF;
                     default: return false;
                 }
             }
