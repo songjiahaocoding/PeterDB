@@ -7,28 +7,30 @@ namespace PeterDB {
     }
 
     RC IndexManager::createFile(const std::string &fileName) {
-        return -1;
+        PagedFileManager& pfm = PagedFileManager::instance();
+        return pfm.createFile(fileName);
     }
 
     RC IndexManager::destroyFile(const std::string &fileName) {
-        return -1;
+        PagedFileManager& pfm = PagedFileManager::instance();
+        return pfm.destroyFile(fileName);
     }
 
     RC IndexManager::openFile(const std::string &fileName, IXFileHandle &ixFileHandle) {
-        return -1;
+        PagedFileManager& pfm = PagedFileManager::instance();
+        return pfm.openFile(fileName, ixFileHandle.fileHandle);
     }
 
     RC IndexManager::closeFile(IXFileHandle &ixFileHandle) {
+        PagedFileManager& pfm = PagedFileManager::instance();
+        return pfm.closeFile(ixFileHandle.fileHandle);
+    }
+
+    RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
         return -1;
     }
 
-    RC
-    IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
-        return -1;
-    }
-
-    RC
-    IndexManager::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
+    RC IndexManager::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
         return -1;
     }
 
@@ -67,11 +69,11 @@ namespace PeterDB {
     }
 
     IXFileHandle::~IXFileHandle() {
+        fileHandle.closeFile();
     }
 
-    RC
-    IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
-        return -1;
+    RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
+        return fileHandle.collectCounterValues(readPageCount, writePageCount, appendPageCount);
     }
 
 } // namespace PeterDB
