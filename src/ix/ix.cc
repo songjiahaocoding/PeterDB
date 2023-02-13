@@ -33,7 +33,10 @@ namespace PeterDB {
     RC IndexManager::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
         return -1;
     }
-
+    /*
+     * highKey == null -> upper limit is +infinity
+     * lowKey == null -> lower limit is -infinity
+     */
     RC IndexManager::scan(IXFileHandle &ixFileHandle,
                           const Attribute &attribute,
                           const void *lowKey,
@@ -44,6 +47,7 @@ namespace PeterDB {
         return -1;
     }
 
+    // Construct the B+ tree in a recursive way, print in JSON format
     RC IndexManager::printBTree(IXFileHandle &ixFileHandle, const Attribute &attribute, std::ostream &out) const {
         return -1;
     }
