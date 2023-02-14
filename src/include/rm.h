@@ -75,6 +75,8 @@ namespace PeterDB {
         RBFM_ScanIterator rbfmScanIterator;
 
         FileHandle fileHandle;
+
+        bool init = false;
     };
 
     // RM_IndexScanIterator is an iterator to go through index entries

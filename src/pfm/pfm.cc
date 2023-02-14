@@ -143,7 +143,7 @@ namespace PeterDB {
     }
 
     RC FileHandle::closeFile(){
-        if(file){
+        if(file != NULL && infoPage){
             infoPage->flushInfoPage(file);
             fclose(file);
             file = nullptr;

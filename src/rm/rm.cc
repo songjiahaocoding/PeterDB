@@ -286,6 +286,7 @@ namespace PeterDB {
         }
 
         rc = rbfm.scan(rm_ScanIterator.fileHandle, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator);
+        rm_ScanIterator.init = true;
         return rc;
     }
 
@@ -294,6 +295,7 @@ namespace PeterDB {
     }
 
     RC RM_ScanIterator::close() {
+        if(!init)return 0;
         return rbfmScanIterator.close();
     }
 

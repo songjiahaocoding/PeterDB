@@ -694,7 +694,7 @@ namespace PeterDB {
     }
 
     RC RBFM_ScanIterator::close() {
-        if(this->fileHandle){
+        if(this->fileHandle != nullptr){
             this->fileHandle->closeFile();
         }
         this->currentSlotNum = 0;
