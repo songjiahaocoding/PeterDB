@@ -70,17 +70,16 @@ namespace PeterDB {
          *  - insert the record into a page
          *  - update the slot information at the back of this page
          */
-        char* pageData = new char [PAGE_SIZE];
-        memset(pageData, 0, PAGE_SIZE);
+
+        memset(fileHandle.pageData, 0, PAGE_SIZE);
         unsigned lastPageNum = fileHandle.getNumberOfPages()-1;
         unsigned pageNum = getNextAvailablePageNum(record.size + SLOT_SIZE + sizeof(RID), fileHandle, lastPageNum);
-        fileHandle.readPage(pageNum, (void *) pageData);
-        unsigned slotID = getSlotNum(pageData);
+        fileHandle.readPage(pageNum, (void *) fileHandle.pageData);
+        unsigned slotID = getSlotNum(fileHandle.pageData);
         rid.pageNum = pageNum;
         rid.slotNum = slotID;
-        writeRecord(record, fileHandle, pageNum, rid, pageData);
+        writeRecord(record, fileHandle, pageNum, rid, fileHandle.pageData);
 
-        delete [] pageData;
         return 0;
     }
 
@@ -144,25 +143,19 @@ namespace PeterDB {
     // Should also return the flag information and stick to the format as before
     RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                           const RID &rid, void *data) {
-        char* pageData = new char [PAGE_SIZE];
-        memset(pageData, 0, PAGE_SIZE);
-        if(fileHandle.readPage(rid.pageNum, pageData)==0){
-            auto slot = getSlotInfo(rid.slotNum, pageData);
-            if(slot.first==5000){
-                delete [] pageData;
-                return -1;
-            }
-            auto data_offset = pageData+slot.first;
+        memset(fileHandle.pageData, 0, PAGE_SIZE);
+        if(fileHandle.readPage(rid.pageNum, fileHandle.pageData)==0){
+            auto slot = getSlotInfo(rid.slotNum, fileHandle.pageData);
+            if(slot.first==5000)return -1;
+
+            auto data_offset = fileHandle.pageData+slot.first;
             if(isTomb(data_offset)){
                 auto rc= readRecord(fileHandle, recordDescriptor, getPointRID(data_offset), data);
-                delete [] pageData;
                 return rc;
             }
-            fetchRecord(slot.first, slot.second, data, pageData);
-            delete [] pageData;
+            fetchRecord(slot.first, slot.second, data, fileHandle.pageData);
             return 0;
         }
-        delete [] pageData;
         return -1;
     }
 
@@ -249,14 +242,13 @@ namespace PeterDB {
      */
     RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                             const RID &rid) {
-        char* pageData = new char [PAGE_SIZE];
-        memset(pageData, 0, PAGE_SIZE);
-        fileHandle.readPage(rid.pageNum, pageData);
-        auto slot = getSlotInfo(rid.slotNum, pageData);
+        memset(fileHandle.pageData, 0, PAGE_SIZE);
+        fileHandle.readPage(rid.pageNum, fileHandle.pageData);
+        auto slot = getSlotInfo(rid.slotNum, fileHandle.pageData);
         auto* info = new unsigned [PAGE_INFO_NUM];
         memset(info, 0, sizeof(unsigned)*PAGE_INFO_NUM);
-        getInfo(pageData, info);
-        auto data_offset = pageData+slot.first;
+        getInfo(fileHandle.pageData, info);
+        auto data_offset = fileHandle.pageData+slot.first;
 
         if(isTomb(data_offset)){
             // Tomb Handler:
@@ -264,19 +256,18 @@ namespace PeterDB {
             deleteRecord(fileHandle, recordDescriptor, getPointRID(data_offset));
         }
         // Read updated page data
-        memset(pageData, 0, PAGE_SIZE);
-        fileHandle.readPage(rid.pageNum, pageData);
+        memset(fileHandle.pageData, 0, PAGE_SIZE);
+        fileHandle.readPage(rid.pageNum, fileHandle.pageData);
         // shift record data to reuse empty space
-        memset(pageData+slot.first, 0, slot.second);
-        shiftRecord(pageData, slot.first, 0, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+        memset(fileHandle.pageData+slot.first, 0, slot.second);
+        shiftRecord(fileHandle.pageData, slot.first, 0, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
         info[DATA_OFFSET] -= slot.second;
         slot.first = DELETE_MARK;
-        auto slotPos = pageData + PAGE_SIZE - sizeof(unsigned )*PAGE_INFO_NUM-(rid.slotNum+1)*SLOT_SIZE;
+        auto slotPos = fileHandle.pageData + PAGE_SIZE - sizeof(unsigned )*PAGE_INFO_NUM-(rid.slotNum+1)*SLOT_SIZE;
         memcpy(slotPos, &slot, SLOT_SIZE);
-        updateInfo(fileHandle, pageData, rid.pageNum, info);
-        fileHandle.writePage(rid.pageNum, pageData);
+        updateInfo(fileHandle, fileHandle.pageData, rid.pageNum, info);
+        fileHandle.writePage(rid.pageNum, fileHandle.pageData);
         delete [] info;
-        delete [] pageData;
         return 0;
     }
 
@@ -289,40 +280,36 @@ namespace PeterDB {
         RID cpy = {rid.pageNum, rid.slotNum};
         Record record(recordDescriptor, data, cpy);
 
-        char* pageData = new char [PAGE_SIZE];
-        memset(pageData, 0, PAGE_SIZE);
-        fileHandle.readPage(rid.pageNum, pageData);
-        auto slot = getSlotInfo(rid.slotNum, pageData);
+        memset(fileHandle.pageData, 0, PAGE_SIZE);
+        fileHandle.readPage(rid.pageNum, fileHandle.pageData);
+        auto slot = getSlotInfo(rid.slotNum, fileHandle.pageData);
         auto* info = new unsigned [PAGE_INFO_NUM];
         memset(info, 0, sizeof(unsigned)*PAGE_INFO_NUM);
-        getInfo(pageData, info);
+        getInfo(fileHandle.pageData, info);
 
-        auto data_offset = pageData+slot.first;
+        auto data_offset = fileHandle.pageData+slot.first;
         if(isTomb(data_offset)){
             auto rc = updateRecord(fileHandle, recordDescriptor, data, getPointRID(data_offset));
-            delete [] pageData;
             delete [] info;
             return rc;
         }
         char* oldData = new char [slot.second];
         memset(oldData, 0, slot.second);
-        fetchRecord(slot.first, slot.second, oldData, pageData);
+        fetchRecord(slot.first, slot.second, oldData, fileHandle.pageData);
         Record oldRecord = Record(recordDescriptor, oldData, cpy);
         delete [] oldData;
 
         if(record.size<=oldRecord.size){
             memcpy(data_offset, record.data, record.size);
-            shiftRecord(pageData, slot.first, record.size+sizeof(RID), slot.second, info[DATA_OFFSET]-slot.first-slot.second);
-            writeUpdateInfo(fileHandle, info, slot, record.size, oldRecord.size, rid, pageData);
-            delete [] pageData;
+            shiftRecord(fileHandle.pageData, slot.first, record.size+sizeof(RID), slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+            writeUpdateInfo(fileHandle, info, slot, record.size, oldRecord.size, rid, fileHandle.pageData);
             delete [] info;
             return 0;
         }
         // Record is the last record, and there is enough space in the middle
-        if(slot.first+slot.second==info[DATA_OFFSET] && getFreeSpace(pageData)>=(record.size-oldRecord.size)){
+        if(slot.first+slot.second==info[DATA_OFFSET] && getFreeSpace(fileHandle.pageData)>=(record.size-oldRecord.size)){
             memcpy(data_offset, record.data, record.size);
-            writeUpdateInfo(fileHandle, info, slot, record.size, oldRecord.size, rid, pageData);
-            delete [] pageData;
+            writeUpdateInfo(fileHandle, info, slot, record.size, oldRecord.size, rid, fileHandle.pageData);
             delete [] info;
             return 0;
         }
@@ -330,19 +317,18 @@ namespace PeterDB {
         // insertRecord(fileHandle, recordDescriptor, data, cpy);
         unsigned lastPageNum = fileHandle.getNumberOfPages()-1;
         cpy.pageNum = getNextAvailablePageNum(record.size + SLOT_SIZE + sizeof(RID), fileHandle, lastPageNum);
-        memset(pageData, 0, PAGE_SIZE);
-        fileHandle.readPage(cpy.pageNum, pageData);
-        cpy.slotNum = getSlotNum(pageData);
+        memset(fileHandle.pageData, 0, PAGE_SIZE);
+        fileHandle.readPage(cpy.pageNum, fileHandle.pageData);
+        cpy.slotNum = getSlotNum(fileHandle.pageData);
 
-        writeRecord(record, fileHandle, cpy.pageNum, cpy, pageData);
-        memset(pageData, 0, PAGE_SIZE);
-        fileHandle.readPage(rid.pageNum, pageData);
-        getInfo(pageData, info);
+        writeRecord(record, fileHandle, cpy.pageNum, cpy, fileHandle.pageData);
+        memset(fileHandle.pageData, 0, PAGE_SIZE);
+        fileHandle.readPage(rid.pageNum, fileHandle.pageData);
+        getInfo(fileHandle.pageData, info);
         insertTomb(data_offset, cpy.pageNum, cpy.slotNum);
-        shiftRecord(pageData, slot.first, TOMB_SIZE, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
-        writeUpdateInfo(fileHandle, info, slot, TOMB_SIZE, oldRecord.size+sizeof(RID), rid, pageData);
+        shiftRecord(fileHandle.pageData, slot.first, TOMB_SIZE, slot.second, info[DATA_OFFSET]-slot.first-slot.second);
+        writeUpdateInfo(fileHandle, info, slot, TOMB_SIZE, oldRecord.size+sizeof(RID), rid, fileHandle.pageData);
 
-        delete [] pageData;
         delete [] info;
         return 0;
     }
@@ -395,17 +381,15 @@ namespace PeterDB {
     RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                              const RID &rid, const std::string &attributeName, void *data) {
         auto id = getAttrID(recordDescriptor, attributeName);
-        char* pageData = new char [PAGE_SIZE];
-        memset(pageData, 0, PAGE_SIZE);
-        fileHandle.readPage(rid.pageNum, pageData);
-        auto slot = getSlotInfo(rid.slotNum, pageData);
+        memset(fileHandle.pageData, 0, PAGE_SIZE);
+        fileHandle.readPage(rid.pageNum, fileHandle.pageData);
+        auto slot = getSlotInfo(rid.slotNum, fileHandle.pageData);
         char* recordData = new char [slot.second];
         memset(recordData, 0, slot.second);
-        memcpy(recordData, pageData+slot.first, slot.second);
+        memcpy(recordData, fileHandle.pageData+slot.first, slot.second);
         if(isNull(recordData+FIELD_NUM_SIZE, id)){
             char flag = 0x80;
             memcpy(data, &flag, 1);
-            delete [] pageData;
             delete [] recordData;
             return 0;
         }
@@ -424,7 +408,6 @@ namespace PeterDB {
                 break;
         }
         delete [] recordData;
-        delete [] pageData;
         return 0;
     }
 
@@ -455,19 +438,16 @@ namespace PeterDB {
         return 0;
     }
 
-    unsigned RecordBasedFileManager::getNextAvailablePageNum(unsigned insertSize, FileHandle &handle, unsigned int startingNum) {
-        char* pageData = new char [PAGE_SIZE];
-        for (int i = 0; i < handle.getNumberOfPages(); ++i) {
-            memset(pageData, 0, PAGE_SIZE);
-            handle.readPage((startingNum + i) % handle.getNumberOfPages(), pageData);
-            if(insertSize<getFreeSpace(pageData)){
-                delete[] pageData;
-                return (startingNum+i)%handle.getNumberOfPages();
+    unsigned RecordBasedFileManager::getNextAvailablePageNum(unsigned insertSize, FileHandle &fileHandle, unsigned int startingNum) {
+        for (int i = 0; i < fileHandle.getNumberOfPages(); ++i) {
+            memset(fileHandle.pageData, 0, PAGE_SIZE);
+            fileHandle.readPage((startingNum + i) % fileHandle.getNumberOfPages(), fileHandle.pageData);
+            if(insertSize<getFreeSpace(fileHandle.pageData)){
+                return (startingNum+i)%fileHandle.getNumberOfPages();
             }
         }
-        appendNewPage(handle);
-        delete [] pageData;
-        return handle.getNumberOfPages()-1;
+        appendNewPage(fileHandle);
+        return fileHandle.getNumberOfPages()-1;
     }
 
     unsigned RecordBasedFileManager::getFreeSpace(char* data) {
@@ -594,7 +574,6 @@ namespace PeterDB {
         }
         bool found = false;
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
-        char* pageData = new char [PAGE_SIZE];
         char* attrValue;
         if(attrType==TypeVarChar){
             attrValue = new char [attrLength+sizeof(int)+1];
@@ -604,16 +583,15 @@ namespace PeterDB {
 
         while(!found){
             // Initialize data
-            memset(pageData, 0, PAGE_SIZE);
-            fileHandle->readPage(currentPageNum, pageData);
+            memset(fileHandle->pageData, 0, PAGE_SIZE);
+            fileHandle->readPage(currentPageNum, fileHandle->pageData);
             unsigned* info = new unsigned [PAGE_INFO_NUM];
             memset(info, 0, sizeof(unsigned)*PAGE_INFO_NUM);
-            rbfm.getInfo(pageData, info);
+            rbfm.getInfo(fileHandle->pageData, info);
             // Judge if the current record match
-            auto slot = rbfm.getSlotInfo(currentSlotNum, pageData);
+            auto slot = rbfm.getSlotInfo(currentSlotNum, fileHandle->pageData);
             if(slot.first==5000 || slot.second<=10){
                 if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1){
-                    delete [] pageData;
                     delete [] attrValue;
                     delete [] info;
                     return RBFM_EOF;
@@ -621,10 +599,9 @@ namespace PeterDB {
                 delete [] info;
                 continue;
             }
-            char* recordData = pageData + slot.first;
+            char* recordData = fileHandle->pageData + slot.first;
             if(rbfm.isTomb(recordData)){
                 if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1){
-                    delete [] pageData;
                     delete [] attrValue;
                     delete [] info;
                     return RBFM_EOF;
@@ -639,7 +616,6 @@ namespace PeterDB {
             char nullId = attrValue[0];
             if(nullId==-128&&commOp!=NO_OP){
                 if(moveToNext(fileHandle->getNumberOfPages(), info[SLOT_NUM])==-1){
-                    delete [] pageData;
                     delete [] attrValue;
                     delete [] info;
                     return RBFM_EOF;
@@ -652,7 +628,7 @@ namespace PeterDB {
                 found = true;
                 char* recordBody = new char[slot.second];
                 memset(recordBody, 0, slot.second);
-                rbfm.fetchRecord(slot.first, slot.second, recordBody, pageData);
+                rbfm.fetchRecord(slot.first, slot.second, recordBody, fileHandle->pageData);
                 Record record(descriptor, recordBody, rid);
                 // Include a null indicator to the returned data
                 short int flag_size = std::ceil( static_cast<double>(attributeNames.size()) /CHAR_BIT);
@@ -692,7 +668,6 @@ namespace PeterDB {
             delete [] info;
         }
         delete [] attrValue;
-        delete [] pageData;
         if(found){
             return 0;
         }

@@ -72,6 +72,8 @@ namespace PeterDB {
         bool handlingFile();
 
         RC closeFile();
+
+        char* pageData;
     private:
         FILE *file;
         PeterDB::infoPage* infoPage;

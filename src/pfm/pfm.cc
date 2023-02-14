@@ -70,9 +70,11 @@ namespace PeterDB {
         writePageCounter = 0;
         appendPageCounter = 0;
         file = nullptr;
+        pageData = new char [PAGE_SIZE];
     }
 
     FileHandle::~FileHandle() {
+        delete [] pageData;
     };
 
     FileHandle &FileHandle::operator=(const FileHandle &) {
