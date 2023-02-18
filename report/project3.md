@@ -6,8 +6,7 @@
  - Github Repo Link:
  - Student 1 UCI NetID:
  - Student 1 Name:
- - Student 2 UCI NetID (if applicable):
- - Student 2 Name (if applicable):
+
 
 
 ### 2. Meta-data page in an index file

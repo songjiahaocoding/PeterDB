@@ -37,6 +37,7 @@ namespace PeterDB {
         WRITE_NUM,
         APPEND_NUM,
         ACTIVE_PAGE_NUM,
+        ROOT_ID,
         INFO_NUM
     };
 
@@ -74,8 +75,14 @@ namespace PeterDB {
         RC closeFile();
 
         char* pageData;
-    private:
         FILE *file;
+
+        int getRoot();
+        void setRoot(unsigned num);
+
+        void updateRoot(int rootNum);
+
+    private:
         PeterDB::infoPage* infoPage;
     };
 } // namespace PeterDB

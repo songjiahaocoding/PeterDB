@@ -92,6 +92,31 @@ namespace PeterDB {
 
         FileHandle fileHandle;
 
+        int getRoot();
+
+        RC readPage(PageNum pageNum, void *data);                           // Get a specific page
+        RC writePage(PageNum pageNum, const void *data);                    // Write a specific page
+        RC appendPage(const void *data);                                    // Append a specific page
+        unsigned getNumberOfPages();                                        // Get the number of pages in the file
+        void setRoot(unsigned int num);
+    };
+
+    // intermediate node
+    class Node {
+        RC findKey(char* leafData, const Attribute& attr, const char* key);
+
+        static bool isNode(char* pageData);
+
+        static void search(char* data, unsigned pageNum, const char* key, const Attribute& attr);
+    };
+
+    // Leaf node
+    class Leaf {
+        static void insertEntry(char* leafData, const Attribute& attr, const char* key);
+
+        static void deleteEntry(char* leafData, const Attribute& attr, const char* key);
+
+        static void search(const char* data, const char* key, const Attribute& attr, RID& rid);
     };
 }// namespace PeterDB
 #endif // _ix_h_

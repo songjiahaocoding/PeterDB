@@ -1,6 +1,36 @@
 #include "src/include/ix.h"
 
 namespace PeterDB {
+    IXFileHandle::IXFileHandle() {
+        ixReadPageCounter = 0;
+        ixWritePageCounter = 0;
+        ixAppendPageCounter = 0;
+    }
+    IXFileHandle::~IXFileHandle() {
+        fileHandle.closeFile();
+    }
+    RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
+        return fileHandle.collectCounterValues(readPageCount, writePageCount, appendPageCount);
+    }
+    int IXFileHandle::getRoot() {
+        return fileHandle.getRoot();
+    }
+    void IXFileHandle::setRoot(unsigned num){
+        fileHandle.setRoot(num);
+    }
+    RC IXFileHandle::readPage(PageNum pageNum, void *data) {
+        return fileHandle.readPage(pageNum, data);
+    }
+    RC IXFileHandle::writePage(PageNum pageNum, const void *data) {
+        return fileHandle.writePage(pageNum, data);
+    }
+    RC IXFileHandle::appendPage(const void *data) {
+        return fileHandle.appendPage(data);
+    }
+    unsigned IXFileHandle::getNumberOfPages() {
+        return fileHandle.getNumberOfPages();
+    }
+
     IndexManager &IndexManager::instance() {
         static IndexManager _index_manager = IndexManager();
         return _index_manager;
@@ -66,18 +96,6 @@ namespace PeterDB {
         return -1;
     }
 
-    IXFileHandle::IXFileHandle() {
-        ixReadPageCounter = 0;
-        ixWritePageCounter = 0;
-        ixAppendPageCounter = 0;
-    }
 
-    IXFileHandle::~IXFileHandle() {
-        fileHandle.closeFile();
-    }
-
-    RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
-        return fileHandle.collectCounterValues(readPageCount, writePageCount, appendPageCount);
-    }
 
 } // namespace PeterDB
