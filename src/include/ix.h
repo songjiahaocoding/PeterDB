@@ -101,13 +101,30 @@ namespace PeterDB {
         void setRoot(unsigned int num);
     };
 
+    // the structure of metadata for intermediate node
+    enum {
+        NODE_TYPE = 0,
+        PARENT,
+        KEY_OFFSET,
+        INDEX_OFFSET,
+        COUNT,
+        NODE_SIZE
+    };
+    // The additional structure for leaf node
+    enum {
+        PRE = NODE_SIZE,
+        NEXT,
+        LEAF_SIZE
+    };
+
     // intermediate node
     class Node {
-        RC findKey(char* leafData, const Attribute& attr, const char* key);
+        void findKey(char* leafData, const Attribute& attr, const char* key, int& offset, int& len);
 
         static bool isNode(char* pageData);
 
         static void search(char* data, unsigned pageNum, const char* key, const Attribute& attr);
+
     };
 
     // Leaf node
