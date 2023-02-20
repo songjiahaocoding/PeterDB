@@ -117,23 +117,31 @@ namespace PeterDB {
         LEAF_SIZE
     };
 
+    // mainly for child entry of insert
+    struct Entry {
+        char* key;
+        int pageNum;
+    };
+
     // intermediate node
     class Node {
         void findKey(char* leafData, const Attribute& attr, const char* key, int& offset, int& len);
 
         static bool isNode(char* pageData);
 
-        static void search(char* data, unsigned pageNum, const char* key, const Attribute& attr);
+        static void search(int pageNum, const char* key, const Attribute& attr);
 
+        static void insertEntry(int pageNum, const Attribute& attr, const char* key, const RID& rid, Entry& entry);
+
+        static void deleteEntry(int paPageNum, int pageNum, const Attribute &attr, const char* key, const RID& rid, Entry& entry);
     };
-
     // Leaf node
     class Leaf {
         static void insertEntry(char* leafData, const Attribute& attr, const char* key);
 
-        static void deleteEntry(char* leafData, const Attribute& attr, const char* key);
+        static void deleteEntry(char* leafData, const Attribute& attr, const char* key, const RID& rid, Entry& entry);
 
-        static void search(const char* data, const char* key, const Attribute& attr, RID& rid);
+        static void search(const char* leafData, const char* key, const Attribute& attr, RID& rid);
     };
 }// namespace PeterDB
 #endif // _ix_h_
