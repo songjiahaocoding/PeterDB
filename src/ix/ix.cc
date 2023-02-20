@@ -57,11 +57,26 @@ namespace PeterDB {
     }
 
     RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
-        return -1;
+        auto root = ixFileHandle.getRoot();
+        if(root==-1){
+            // Initialization
+            char* data = new char [PAGE_SIZE];
+            memset(data, 0, PAGE_SIZE);
+            Leaf::buildLeaf(data, NULL, NULL, NULL);
+            Leaf::insertEntry(data, attribute, static_cast<const char *>(key), rid);
+            ixFileHandle.appendPage(data);
+            ixFileHandle.setRoot(root+1);
+            delete [] data;
+            return 0;
+        } else {
+            return insertInPage(ixFileHandle, attribute, key, rid, root);
+        }
     }
 
     RC IndexManager::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
-        return -1;
+        int root = ixFileHandle.getRoot();
+        if (root == -1) {return -1;}
+        return deleteInPage(ixFileHandle, attribute, key, rid, root);
     }
     /*
      * highKey == null -> upper limit is +infinity
@@ -82,6 +97,18 @@ namespace PeterDB {
         return -1;
     }
 
+    RC IndexManager::insertInPage(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid,
+                               int pageNum) {
+
+
+        return 0;
+    }
+
+    RC IndexManager::deleteInPage(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid,
+                               int pageNum) {
+        return 0;
+    }
+
     IX_ScanIterator::IX_ScanIterator() {
     }
 
@@ -97,5 +124,15 @@ namespace PeterDB {
     }
 
 
+    void Node::getInfo(int *info, char *data) {
+        memcpy(info, data+PAGE_SIZE-sizeof(int)*NODE_SIZE, sizeof(int)*NODE_SIZE);
+    }
 
+    void Leaf::getInfo(int *info, char *leafData) {
+        memcpy(info, leafData+PAGE_SIZE-sizeof(int)*LEAF_SIZE, sizeof(int)*LEAF_SIZE);
+    }
+
+    void Leaf::buildLeaf(char *data, int parent, int previous, int next) {
+
+    }
 } // namespace PeterDB
