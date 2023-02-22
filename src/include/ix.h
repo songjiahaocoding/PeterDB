@@ -163,13 +163,17 @@ namespace PeterDB {
         static void writeInfo(char *data, int *info);
 
         static char * getKey(char *page, int i);
+
+        static void removeKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry entry, const Attribute &attr);
+
+        static void print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int i);
     };
     // Leaf node
     class Leaf {
     public:
         static void insertEntry(char* leafData, const Attribute& attr, keyEntry& entry, RID& rid);
 
-        static void deleteEntry(char* leafData, const Attribute& attr, keyEntry& entry, childEntry& child);
+        static void deleteEntry(char* leafData, const Attribute& attr, keyEntry& entry);
 
         static void search(const char* leafData, keyEntry& entry, const Attribute& attr);
 
@@ -186,6 +190,8 @@ namespace PeterDB {
         static char *getKey(char *page, int i);
 
         static void writeInfo(char *data, int *info);
+
+        static void print(char *data, const Attribute &attr);
     };
 }// namespace PeterDB
 #endif // _ix_h_

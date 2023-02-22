@@ -1,3 +1,5 @@
+#include <iostream>
+#include <queue>
 #include "src/include/ix.h"
 
 namespace PeterDB {
@@ -19,6 +21,7 @@ namespace PeterDB {
         fileHandle.setRoot(num);
     }
     RC IXFileHandle::readPage(PageNum pageNum, void *data) {
+        memset(data, 0, PAGE_SIZE);
         return fileHandle.readPage(pageNum, data);
     }
     RC IXFileHandle::writePage(PageNum pageNum, const void *data) {
@@ -99,7 +102,11 @@ namespace PeterDB {
 
     // Construct the B+ tree in a recursive way, print in JSON format
     RC IndexManager::printBTree(IXFileHandle &ixFileHandle, const Attribute &attribute, std::ostream &out) const {
-        return -1;
+        int root = ixFileHandle.getRoot();
+        if (root == -1) {std::cout<<"ERROR: No root"<<std::endl;}
+        Node::print(ixFileHandle, attribute, root, 0);
+        std::cout<<std::endl;
+        return 0;
     }
 
     IX_ScanIterator::IX_ScanIterator() {
@@ -125,7 +132,6 @@ namespace PeterDB {
     void Node::insertEntry(IXFileHandle &ixFileHandle, int pageNum, Attribute &attr, keyEntry& entry, RID& rid,
                       childEntry *child) {
         char* data = new char [PAGE_SIZE];
-        memset(data, 0, PAGE_SIZE);
         ixFileHandle.readPage(pageNum, data);
         if(Node::isNode(data)){
             auto num = Node::findKey(data, attr, entry.key);
@@ -206,12 +212,46 @@ namespace PeterDB {
         delete [] data;
     }
 
+    void Node::deleteEntry(IXFileHandle &ixFileHandle, int paPageNum, int pageNum, const Attribute &attr, keyEntry &entry,
+                           childEntry *child) {
+        char* data = new char [PAGE_SIZE];
+        ixFileHandle.readPage(pageNum, data);
+        if(Node::isNode(data)){
+            auto num = Node::findKey(data, attr, entry.key);
+            deleteEntry(ixFileHandle, pageNum, num, attr, entry, child);
+            // No use of child because of the lazy delete
+//            keyEntry newEntry;
+//            newEntry.key = child->key;
+//            Node::removeKey(ixFileHandle, pageNum, newEntry, attr);
+//            ixFileHandle.writePage(pageNum, data);
+        }
+        else {
+            Leaf::deleteEntry(data, attr, entry);
+            ixFileHandle.writePage(pageNum, data);
+        }
+        delete [] data;
+    }
+
     void Node::writeInfo(char *data, int *info) {
 
     }
 
     char* Node::getKey(char *page, int i) {
 
+    }
+
+    void Node::print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int depth) {
+        char* data = new char [PAGE_SIZE];
+        ixFileHandle.readPage(root, data);
+        if(!isNode(data)){
+            Leaf::print(data, attribute);
+            delete [] data;
+            return;
+        }
+
+        std::cout<<"{\"keys\": [";
+
+        std::queue<int> children;
     }
 
     void Leaf::getInfo(int *info, char *leafData) {
@@ -237,6 +277,10 @@ namespace PeterDB {
 
     // Only write info to in-memory data, don't flush back to disk
     void Leaf::writeInfo(char *data, int *info) {
+
+    }
+
+    void Leaf::print(char *data, const Attribute &attr) {
 
     }
 
