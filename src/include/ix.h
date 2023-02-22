@@ -122,6 +122,11 @@ namespace PeterDB {
         LEAF_SIZE
     };
 
+    class Tool{
+    public:
+        static float compare(char* key1, char* key2, Attribute& attr);
+    };
+
     // mainly for child entry of insert
     struct childEntry {
         char* key;
@@ -153,7 +158,7 @@ namespace PeterDB {
 
         static void createNode(char *data, int type, int parent);
 
-        static char* split(char *data, char *page, keyEntry& entry);
+        static void split(char *data, char *page, char* middle);
 
         static void writeInfo(char *data, int *info);
 

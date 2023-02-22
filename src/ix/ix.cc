@@ -118,6 +118,7 @@ namespace PeterDB {
 
 
     void Node::getInfo(int *info, char *data) {
+        memset(info, 0, sizeof(int)*NODE_SIZE);
         memcpy(info, data+PAGE_SIZE-sizeof(int)*NODE_SIZE, sizeof(int)*NODE_SIZE);
     }
 
@@ -136,45 +137,55 @@ namespace PeterDB {
                 if(Node::haveSpave(data, entry.key)){
                     Node::appendKey(ixFileHandle, pageNum, newEntry, attr);
                     child = nullptr;
-                } else {
+                }
+                else {
                     char* newPage = new char [PAGE_SIZE];
-                    memset(newPage, 0, PAGE_SIZE);
                     int* info = new int [NODE_SIZE];
-                    memset(info, 0, sizeof(int)*NODE_SIZE);
 
-                    // TODO: How to split a node?
-                    // Node will send the smallest value of the newly created key to the upper layer
+                    // Node will send the middleKey to upper layer
                     Node::getInfo(info, data);
                     Node::createNode(newPage, NODE, info[PARENT]);
-                    char* key = Node::split(data, newPage, newEntry);
+                    char* middleKey = new char [PAGE_SIZE];
+                    memset(middleKey, 0, PAGE_SIZE);
+                    Node::split(data, newPage, middleKey);
 
                     int newPageNum = ixFileHandle.getNumberOfPages();
-                    childEntry newChild = {key, newPageNum};
-                    child = &newChild;
-
                     ixFileHandle.appendPage(newPage);
                     ixFileHandle.writePage(pageNum, data);
 
+                    if(Tool::compare(child->key, middleKey, attr)<0){
+                        Node::insertEntry(ixFileHandle, pageNum, attr, newEntry, rid, nullptr);
+                    } else {
+                        Node::insertEntry(ixFileHandle, newPageNum, attr, newEntry, rid, nullptr);
+                    }
+
+                    childEntry newChild = {middleKey, newPageNum};
+                    child = &newChild;
+
                     if(info[NODE_TYPE]==ROOT){
                         char* root = new char [PAGE_SIZE];
-                        Node::createNode(newPage, ROOT, NULL);
+                        Node::createNode(root, ROOT, NULL);
                         keyEntry entry1;
                         entry1.left = pageNum;
                         entry1.right = newPageNum;
                         entry1.key = Node::getKey(newPage, 0);
                         Node::appendKey(ixFileHandle, ixFileHandle.getNumberOfPages(), entry1, attr);
+                        delete [] root;
                     }
+
+                    delete [] newPage;
+                    delete [] info;
                 }
             }
-        } else {
+        }
+        else {
             if(Leaf::haveSpace(data, attr, entry.key)){
                 Leaf::insertEntry(data, attr, entry, rid);
                 child = nullptr;
-            } else {
+            }
+            else {
                 char* newPage = new char [PAGE_SIZE];
-                memset(newPage, 0, PAGE_SIZE);
                 int* info = new int [LEAF_SIZE];
-                memset(info, 0, sizeof(int)*LEAF_SIZE);
 
                 Leaf::getInfo(info, data);
                 Leaf::createLeaf(newPage, info[PARENT], pageNum, info[NEXT]);
@@ -195,10 +206,6 @@ namespace PeterDB {
         delete [] data;
     }
 
-    char* Node::split(char *data, char *page, keyEntry& entry) {
-
-    }
-
     void Node::writeInfo(char *data, int *info) {
 
     }
@@ -208,6 +215,7 @@ namespace PeterDB {
     }
 
     void Leaf::getInfo(int *info, char *leafData) {
+        memset(info, 0, sizeof(int)*LEAF_SIZE);
         memcpy(info, leafData+PAGE_SIZE-sizeof(int)*LEAF_SIZE, sizeof(int)*LEAF_SIZE);
     }
 
@@ -227,6 +235,7 @@ namespace PeterDB {
 //        return nullptr;
     }
 
+    // Only write info to in-memory data, don't flush back to disk
     void Leaf::writeInfo(char *data, int *info) {
 
     }
