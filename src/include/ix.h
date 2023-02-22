@@ -16,9 +16,10 @@ namespace PeterDB {
 
     class IXFileHandle;
 
-    struct Entry{
+    struct keyEntry{
+        int left = -1;
         char* key;
-        RID& rid;
+        int right = -1;
     };
 
     class IndexManager {
@@ -41,12 +42,8 @@ namespace PeterDB {
         // Insert an entry into the given index that is indicated by the given ixFileHandle.
         RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid);
 
-        RC insertInPage(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid, int pageNum);
-
         // Delete an entry from the given index that is indicated by the given ixFileHandle.
         RC deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid);
-
-        RC deleteInPage(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid, int pageNum);
 
         // Initialize and IX_ScanIterator to support a range search
         RC scan(IXFileHandle &ixFileHandle,
@@ -114,11 +111,8 @@ namespace PeterDB {
 
     // the structure of metadata for intermediate node
     enum {
-        NODE_TYPE = 0,
+        NODE_TYPE = PAGE_INFO_NUM,
         PARENT,
-        KEY_OFFSET,
-        INDEX_OFFSET,
-        COUNT,
         NODE_SIZE
     };
     // The additional structure for leaf node
@@ -133,34 +127,56 @@ namespace PeterDB {
         char* key;
         int pageNum;
     };
-
+    #define ROOT 1
     // intermediate node
     class Node {
     public:
-        void findKey(char* data, const Attribute& attr, const char* key, int& offset);
+        static int findKey(char* data, const Attribute& attr, const char* key);
 
         static bool isNode(char* pageData);
 
         static void search(int pageNum, const char* key, const Attribute& attr);
 
-        static void insertEntry(int pageNum, const Attribute& attr, const char* key, const RID& rid, childEntry& child);
+        static void insertEntry(IXFileHandle& ixFileHandle, int pageNum, const Attribute& attr, keyEntry& entry, RID& rid, childEntry* child);
 
-        static void deleteEntry(int paPageNum, int pageNum, const Attribute &attr, const char* key, const RID& rid, childEntry& child);
+        static void deleteEntry(IXFileHandle& ixFileHandle, int paPageNum, int pageNum, const Attribute &attr, keyEntry& entry, childEntry* child);
 
         static void getInfo(int* info, char* data);
+
+        static bool haveSpave(char *data, const char *key);
+
+        static void appendKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry& entry);
+
+        static void createNode(char *data, int type, int parent);
+
+        static void split(char *data, char *page);
+
+        static void writeInfo(char *data, int *info);
+
+        static char * getKey(char *page, int i);
     };
     // Leaf node
     class Leaf {
     public:
-        static void insertEntry(char* leafData, const Attribute& attr, const char* key, const RID& rid);
+        static void insertEntry(char* leafData, const Attribute& attr, keyEntry& entry, RID& rid);
 
-        static void deleteEntry(char* leafData, const Attribute& attr, const char* key, const RID& rid, childEntry& child);
+        static void deleteEntry(char* leafData, const Attribute& attr, keyEntry& entry, childEntry& child);
 
-        static void search(const char* leafData, const char* key, const Attribute& attr, RID& rid);
+        static void search(const char* leafData, keyEntry& entry, const Attribute& attr);
 
         static void getInfo(int* info, char* leafData);
 
         static void buildLeaf(char* data, int parent, int previous, int next);
+
+        static bool haveSpace(char *data, const Attribute &attribute, const char *key);
+
+        static void createLeaf(char *page, int parent, int pre, int next);
+
+        static void split(char *data, char *newData);
+
+        static char *getKey(char *page, int i);
+
+        static void writeInfo(char *data, int *info);
     };
 }// namespace PeterDB
 #endif // _ix_h_
