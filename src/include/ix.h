@@ -127,7 +127,11 @@ namespace PeterDB {
         char* key;
         int pageNum;
     };
-    #define ROOT 1
+    enum {
+        ROOT,
+        NODE,
+        LEAF
+    };
     // intermediate node
     class Node {
     public:
@@ -137,7 +141,7 @@ namespace PeterDB {
 
         static void search(int pageNum, const char* key, const Attribute& attr);
 
-        static void insertEntry(IXFileHandle& ixFileHandle, int pageNum, const Attribute& attr, keyEntry& entry, RID& rid, childEntry* child);
+        static void insertEntry(IXFileHandle& ixFileHandle, int pageNum, Attribute& attr, keyEntry& entry, RID& rid, childEntry* child);
 
         static void deleteEntry(IXFileHandle& ixFileHandle, int paPageNum, int pageNum, const Attribute &attr, keyEntry& entry, childEntry* child);
 
@@ -145,11 +149,11 @@ namespace PeterDB {
 
         static bool haveSpave(char *data, const char *key);
 
-        static void appendKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry& entry);
+        static void appendKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry& entry, Attribute& attr);
 
         static void createNode(char *data, int type, int parent);
 
-        static void split(char *data, char *page);
+        static char* split(char *data, char *page, keyEntry& entry);
 
         static void writeInfo(char *data, int *info);
 

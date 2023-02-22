@@ -65,12 +65,12 @@ namespace PeterDB {
             char* data = new char [PAGE_SIZE];
             memset(data, 0, PAGE_SIZE);
             Leaf::buildLeaf(data, NULL, NULL, NULL);
-            Leaf::insertEntry(data, attribute, entry);
+            Leaf::insertEntry(data, attribute, entry, const_cast<RID &>(rid));
             ixFileHandle.appendPage(data);
             ixFileHandle.setRoot(root+1);
             delete [] data;
         } else {
-            Node::insertEntry(ixFileHandle, root, attribute, entry, const_cast<RID &>(rid), nullptr);
+            Node::insertEntry(ixFileHandle, root, const_cast<Attribute &>(attribute), entry, const_cast<RID &>(rid), nullptr);
         }
         return 0;
     }
@@ -121,7 +121,7 @@ namespace PeterDB {
         memcpy(info, data+PAGE_SIZE-sizeof(int)*NODE_SIZE, sizeof(int)*NODE_SIZE);
     }
 
-    void Node::insertEntry(IXFileHandle &ixFileHandle, int pageNum, const Attribute &attr, keyEntry& entry, RID& rid,
+    void Node::insertEntry(IXFileHandle &ixFileHandle, int pageNum, Attribute &attr, keyEntry& entry, RID& rid,
                       childEntry *child) {
         char* data = new char [PAGE_SIZE];
         memset(data, 0, PAGE_SIZE);
@@ -129,28 +129,26 @@ namespace PeterDB {
         if(Node::isNode(data)){
             auto num = Node::findKey(data, attr, entry.key);
             insertEntry(ixFileHandle, num, attr, entry, rid, child);
-            if(child!= nullptr){
+            if(child != nullptr){
+                keyEntry newEntry;
+                newEntry.key = child->key;
+                newEntry.right = child->pageNum;
                 if(Node::haveSpave(data, entry.key)){
-                    Node::appendKey(ixFileHandle, pageNum, entry);
+                    Node::appendKey(ixFileHandle, pageNum, newEntry, attr);
                     child = nullptr;
                 } else {
-                    /*
-                     * 1. Split this node
-                     * 2. set the childEntry
-                     * 3. if root, create a new node as the root pointing to two newly created nodes
-                     */
                     char* newPage = new char [PAGE_SIZE];
                     memset(newPage, 0, PAGE_SIZE);
-                    int* info = new int [LEAF_SIZE];
+                    int* info = new int [NODE_SIZE];
                     memset(info, 0, sizeof(int)*NODE_SIZE);
 
+                    // TODO: How to split a node?
+                    // Node will send the smallest value of the newly created key to the upper layer
                     Node::getInfo(info, data);
-                    Node::createNode(newPage, ROOT-1, info[PARENT]);
-                    Node::split(data, newPage);
+                    Node::createNode(newPage, NODE, info[PARENT]);
+                    char* key = Node::split(data, newPage, newEntry);
 
-                    auto key = Leaf::getKey(newPage, 0);
                     int newPageNum = ixFileHandle.getNumberOfPages();
-
                     childEntry newChild = {key, newPageNum};
                     child = &newChild;
 
@@ -160,8 +158,11 @@ namespace PeterDB {
                     if(info[NODE_TYPE]==ROOT){
                         char* root = new char [PAGE_SIZE];
                         Node::createNode(newPage, ROOT, NULL);
-                        keyEntry entry1 = {};
-                        Node::appendKey(ixFileHandle, ixFileHandle.getNumberOfPages(), )
+                        keyEntry entry1;
+                        entry1.left = pageNum;
+                        entry1.right = newPageNum;
+                        entry1.key = Node::getKey(newPage, 0);
+                        Node::appendKey(ixFileHandle, ixFileHandle.getNumberOfPages(), entry1, attr);
                     }
                 }
             }
@@ -170,11 +171,6 @@ namespace PeterDB {
                 Leaf::insertEntry(data, attr, entry, rid);
                 child = nullptr;
             } else {
-                /*
-                 * 1. Split this leaf node
-                 * 2. set the childEntry
-                 * 3. set sibling pointer
-                 */
                 char* newPage = new char [PAGE_SIZE];
                 memset(newPage, 0, PAGE_SIZE);
                 int* info = new int [LEAF_SIZE];
@@ -199,7 +195,7 @@ namespace PeterDB {
         delete [] data;
     }
 
-    void Node::split(char *data, char *page) {
+    char* Node::split(char *data, char *page, keyEntry& entry) {
 
     }
 
