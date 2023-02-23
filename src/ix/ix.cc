@@ -142,7 +142,6 @@ namespace PeterDB {
                 newEntry.right = child->pageNum;
                 if(Node::haveSpace(data, entry.key, attr)){
                     Node::appendKey(data, newEntry, attr);
-                    child = nullptr;
                 }
                 else {
                     char* newPage = new char [PAGE_SIZE];
@@ -173,7 +172,10 @@ namespace PeterDB {
                         keyEntry entry1;
                         entry1.left = pageNum;
                         entry1.right = newPageNum;
-                        entry1.key = Node::getKey(newPage, 0);
+                        auto slot = getSlot(newPage, 0);
+                        entry1.key = new char [slot.second];
+                        memset(entry1.key, 0, slot.second);
+                        memcpy(entry1.key, newPage+slot.first, slot.second);
                         Node::appendKey(root, entry1, attr);
                         ixFileHandle.appendPage(root);
                         delete [] root;
@@ -182,6 +184,8 @@ namespace PeterDB {
                     delete [] newPage;
                     delete [] info;
                 }
+                delete [] child->key;
+                child = nullptr;
             }
         }
         else {
@@ -192,14 +196,26 @@ namespace PeterDB {
             else {
                 char* newPage = new char [PAGE_SIZE];
                 int* info = new int [LEAF_SIZE];
+                char* middleKey = new char [PAGE_SIZE];
+                memset(middleKey, 0, PAGE_SIZE);
 
                 Leaf::getInfo(info, data);
                 Leaf::createLeaf(newPage, info[PARENT], pageNum, info[NEXT]);
                 Leaf::split(data, newPage);
 
                 info[NEXT] = ixFileHandle.getNumberOfPages();
-                childEntry newChild = {Leaf::getKey(newPage, 0), info[NEXT]};
+                auto slot = Leaf::getSlot(newPage, 0);
+                char* newKey = new char [slot.second];
+                memset(newKey, 0, slot.second);
+                memcpy(newKey, newPage+slot.first, slot.second);
+                childEntry newChild = {newKey, info[NEXT]};
                 child = &newChild;
+
+                if(Tool::compare(entry.key, middleKey, attr)<0){
+                    Leaf::insertEntry(data, attr, entry, rid);
+                } else {
+                    Leaf::insertEntry(newPage, attr, entry, rid);
+                }
 
                 Leaf::writeInfo(data, info);
                 ixFileHandle.appendPage(newPage);
@@ -239,10 +255,6 @@ namespace PeterDB {
             memcpy(base-offset, &info[i], sizeof(int));
             offset += sizeof(int);
         }
-    }
-
-    char* Node::getKey(char *page, int i) {
-
     }
 
     bool Node::isNode(char *pageData) {
@@ -333,6 +345,16 @@ namespace PeterDB {
         delete [] info;
     }
 
+    std::pair<unsigned, unsigned> Node::getSlot(char *page, int i) {
+        auto base = page+PAGE_SIZE-sizeof(int)*NODE_SIZE;
+        auto addr = base - SLOT_SIZE*(i+1);
+
+        std::pair<unsigned, unsigned> slot;
+        memcpy(&slot, addr, SLOT_SIZE);
+
+        return slot;
+    }
+
     void Leaf::getInfo(int *info, char *leafData) {
         memset(info, 0, sizeof(int)*LEAF_SIZE);
         auto base = leafData+PAGE_SIZE;
@@ -356,11 +378,43 @@ namespace PeterDB {
     }
 
     void Leaf::split(char *data, char *newData) {
+        int* info = new int [LEAF_SIZE];
+        getInfo(info, data);
+        auto count = info[SLOT_NUM];
+        int d = count/2;
 
+        auto slot = getSlot(data, d-1);
+        auto data_pivot = data+slot.first+slot.second;
+        auto info_pivot = data+PAGE_SIZE-sizeof(int)*LEAF_SIZE-SLOT_SIZE*d;
+        auto dataLen = info[DATA_OFFSET]- slot.first-slot.second;
+        auto infoLen = SLOT_SIZE*(count-d);
+
+        memcpy(newData, data_pivot, dataLen);
+        memcpy(newData+PAGE_SIZE-sizeof(int)*LEAF_SIZE, info_pivot, infoLen);
+
+        info[SLOT_NUM] = d;
+        info[DATA_OFFSET] = slot.first+slot.second;
+        info[INFO_OFFSET] = sizeof(int)*LEAF_SIZE + SLOT_SIZE*d;
+        writeInfo(data, info);
+        memset(data_pivot, 0, dataLen);
+        memset(info_pivot, 0, infoLen);
+
+        int* newInfo = new int [LEAF_SIZE];
+        getInfo(newInfo, newData);
+        newInfo[SLOT_NUM] = count-d;
+        newInfo[DATA_OFFSET] = dataLen;
+        newInfo[INFO_OFFSET] += infoLen;
+        writeInfo(newData, info);
     }
 
-    char* Leaf::getKey(char *page, int i) {
-//        return nullptr;
+    std::pair<unsigned, unsigned> Leaf::getSlot(char *page, int i) {
+        auto base = page+PAGE_SIZE-sizeof(int)*LEAF_SIZE;
+        auto addr = base - SLOT_SIZE*(i+1);
+
+        std::pair<unsigned, unsigned> slot;
+        memcpy(&slot, addr, SLOT_SIZE);
+
+        return slot;
     }
 
     // Only write info to in-memory data, don't flush back to disk
@@ -409,9 +463,10 @@ namespace PeterDB {
         }
 
         memcpy(pos, entry.key, len);
+        memcpy(pos+len, &rid, sizeof(RID));
         Tool::writeSlot(leafData, info, len);
 
-        info[DATA_OFFSET] += len;
+        info[DATA_OFFSET] += len+sizeof(RID);
         writeInfo(leafData, info);
         delete [] info;
     }

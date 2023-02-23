@@ -165,7 +165,7 @@ namespace PeterDB {
 
         static void writeInfo(char *data, int *info);
 
-        static char* getKey(char *page, int i);
+        static std::pair<unsigned, unsigned> getSlot(char *page, int i);
 
         static void removeKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry entry, const Attribute &attr);
 
@@ -188,7 +188,7 @@ namespace PeterDB {
 
         static void split(char *data, char *newData);
 
-        static char *getKey(char *page, int i);
+        static std::pair<unsigned, unsigned> getSlot(char *page, int i);
 
         static void writeInfo(char *data, int *info);
 
