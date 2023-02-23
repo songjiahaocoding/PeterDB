@@ -282,6 +282,15 @@ namespace PeterDB {
         return 0;
     }
 
+    void Node::createNode(char *data, int type, int parent) {
+        memset(data, 0, PAGE_SIZE);
+        int* info = new int [NODE_SIZE];
+        info[INFO_OFFSET] = sizeof(int)*NODE_SIZE;
+        info[PARENT] = parent;
+        info[NODE_TYPE] = type;
+        writeInfo(data, info);
+    }
+
     void Leaf::getInfo(int *info, char *leafData) {
         memset(info, 0, sizeof(int)*LEAF_SIZE);
         auto base = leafData+PAGE_SIZE;
@@ -298,6 +307,14 @@ namespace PeterDB {
 
     void Leaf::createLeaf(char *page, int parent, int pre, int next) {
         memset(page, 0, PAGE_SIZE);
+        int* info = new int [LEAF_SIZE];
+        memset(info, 0, sizeof(int)*LEAF_SIZE);
+        info[INFO_OFFSET] = sizeof(int)*LEAF_SIZE;
+        info[PARENT] = parent;
+        info[PRE] = pre;
+        info[NODE_TYPE] = LEAF;
+        info[NEXT] = next;
+        writeInfo(page, info);
     }
 
     void Leaf::split(char *data, char *newData) {
