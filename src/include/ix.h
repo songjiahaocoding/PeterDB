@@ -125,6 +125,8 @@ namespace PeterDB {
     class Tool{
     public:
         static float compare(char* key1, char* key2, Attribute& attr);
+
+        static void writeSlot(char *data, int *info, int len);
     };
 
     // mainly for child entry of insert
@@ -135,7 +137,8 @@ namespace PeterDB {
     enum {
         ROOT,
         NODE,
-        LEAF
+        LEAF,
+        LEAF_ROOT
     };
     // intermediate node
     class Node {
@@ -154,7 +157,7 @@ namespace PeterDB {
 
         static bool haveSpace(char *data, const char *key, Attribute& attr);
 
-        static void appendKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry& entry, Attribute& attr);
+        static void appendKey(char* data, keyEntry& entry, Attribute& attr);
 
         static void createNode(char *data, int type, int parent);
 
