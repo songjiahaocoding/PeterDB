@@ -126,7 +126,12 @@ namespace PeterDB {
 
     void Node::getInfo(int *info, char *data) {
         memset(info, 0, sizeof(int)*NODE_SIZE);
-        memcpy(info, data+PAGE_SIZE-sizeof(int)*NODE_SIZE, sizeof(int)*NODE_SIZE);
+        auto base = data+PAGE_SIZE;
+        int offset = sizeof(int);
+        for(int i=0;i<NODE_SIZE;i++){
+            memcpy(&info[i], base-offset, sizeof(int));
+            offset += sizeof(int);
+        }
     }
 
     void Node::insertEntry(IXFileHandle &ixFileHandle, int pageNum, Attribute &attr, keyEntry& entry, RID& rid,
@@ -233,11 +238,22 @@ namespace PeterDB {
     }
 
     void Node::writeInfo(char *data, int *info) {
-
+        auto base = data+PAGE_SIZE;
+        int offset = sizeof(int);
+        for(int i=0;i<NODE_SIZE;i++){
+            memcpy(base-offset, &info[i], sizeof(int));
+            offset += sizeof(int);
+        }
     }
 
     char* Node::getKey(char *page, int i) {
 
+    }
+
+    bool Node::isNode(char *pageData) {
+        int* info = new int [NODE_SIZE];
+        getInfo(info, pageData);
+        return info[NODE_TYPE] != LEAF;
     }
 
     void Node::print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int depth) {
@@ -253,10 +269,27 @@ namespace PeterDB {
 
         std::queue<int> children;
     }
+    // Binary search to find the key
+    int Node::findKey(char *data, const Attribute &attr, const char *key) {
+        int* info = new int [NODE_SIZE];
+        getInfo(info, data);
+        int l = 0, r = info[SLOT_NUM], mid;
+        while(l<r){
+            mid = l+(r-l)/2;
+
+        }
+
+        return 0;
+    }
 
     void Leaf::getInfo(int *info, char *leafData) {
         memset(info, 0, sizeof(int)*LEAF_SIZE);
-        memcpy(info, leafData+PAGE_SIZE-sizeof(int)*LEAF_SIZE, sizeof(int)*LEAF_SIZE);
+        auto base = leafData+PAGE_SIZE;
+        int offset = sizeof(int);
+        for(int i=0;i<LEAF_SIZE;i++){
+            memcpy(&info[i], base-offset, sizeof(int));
+            offset += sizeof(int);
+        }
     }
 
     void Leaf::buildLeaf(char *data, int parent, int previous, int next) {
@@ -264,7 +297,7 @@ namespace PeterDB {
     }
 
     void Leaf::createLeaf(char *page, int parent, int pre, int next) {
-
+        memset(page, 0, PAGE_SIZE);
     }
 
     void Leaf::split(char *data, char *newData) {
@@ -277,7 +310,12 @@ namespace PeterDB {
 
     // Only write info to in-memory data, don't flush back to disk
     void Leaf::writeInfo(char *data, int *info) {
-
+        auto base = data+PAGE_SIZE;
+        int offset = sizeof(int);
+        for(int i=0;i<LEAF_SIZE;i++){
+            memcpy(base-offset, &info[i], sizeof(int));
+            offset += sizeof(int);
+        }
     }
 
     void Leaf::print(char *data, const Attribute &attr) {
