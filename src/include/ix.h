@@ -152,7 +152,7 @@ namespace PeterDB {
 
         static void getInfo(int* info, char* data);
 
-        static bool haveSpave(char *data, const char *key);
+        static bool haveSpace(char *data, const char *key, Attribute& attr);
 
         static void appendKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry& entry, Attribute& attr);
 
@@ -162,7 +162,7 @@ namespace PeterDB {
 
         static void writeInfo(char *data, int *info);
 
-        static char * getKey(char *page, int i);
+        static char* getKey(char *page, int i);
 
         static void removeKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry entry, const Attribute &attr);
 
@@ -179,9 +179,7 @@ namespace PeterDB {
 
         static void getInfo(int* info, char* leafData);
 
-        static void buildLeaf(char* data, int parent, int previous, int next);
-
-        static bool haveSpace(char *data, const Attribute &attribute, const char *key);
+        static bool haveSpace(char *data, const Attribute &attr, const char *key);
 
         static void createLeaf(char *page, int parent, int pre, int next);
 

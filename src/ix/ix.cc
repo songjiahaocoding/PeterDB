@@ -33,27 +33,22 @@ namespace PeterDB {
     unsigned IXFileHandle::getNumberOfPages() {
         return fileHandle.getNumberOfPages();
     }
-
     IndexManager &IndexManager::instance() {
         static IndexManager _index_manager = IndexManager();
         return _index_manager;
     }
-
     RC IndexManager::createFile(const std::string &fileName) {
         PagedFileManager& pfm = PagedFileManager::instance();
         return pfm.createFile(fileName);
     }
-
     RC IndexManager::destroyFile(const std::string &fileName) {
         PagedFileManager& pfm = PagedFileManager::instance();
         return pfm.destroyFile(fileName);
     }
-
     RC IndexManager::openFile(const std::string &fileName, IXFileHandle &ixFileHandle) {
         PagedFileManager& pfm = PagedFileManager::instance();
         return pfm.openFile(fileName, ixFileHandle.fileHandle);
     }
-
     RC IndexManager::closeFile(IXFileHandle &ixFileHandle) {
         PagedFileManager& pfm = PagedFileManager::instance();
         return pfm.closeFile(ixFileHandle.fileHandle);
@@ -67,7 +62,7 @@ namespace PeterDB {
             // Initialization
             char* data = new char [PAGE_SIZE];
             memset(data, 0, PAGE_SIZE);
-            Leaf::buildLeaf(data, NULL, NULL, NULL);
+            Leaf::createLeaf(data, NULL, NULL, NULL);
             Leaf::insertEntry(data, attribute, entry, const_cast<RID &>(rid));
             ixFileHandle.appendPage(data);
             ixFileHandle.setRoot(root+1);
@@ -145,7 +140,7 @@ namespace PeterDB {
                 keyEntry newEntry;
                 newEntry.key = child->key;
                 newEntry.right = child->pageNum;
-                if(Node::haveSpave(data, entry.key)){
+                if(Node::haveSpace(data, entry.key, attr)){
                     Node::appendKey(ixFileHandle, pageNum, newEntry, attr);
                     child = nullptr;
                 }
@@ -291,6 +286,26 @@ namespace PeterDB {
         writeInfo(data, info);
     }
 
+    bool Node::haveSpace(char *data, const char *key, Attribute& attr) {
+        int* info = new int [NODE_SIZE];
+        getInfo(info, data);
+        auto empty = PAGE_SIZE - info[DATA_OFFSET] - info[INFO_OFFSET];
+        int space = 0;
+        switch (attr.type) {
+            case TypeInt:
+            case TypeReal:
+                space+=4;
+                break;
+            case TypeVarChar:
+                int len = 0;
+                memcpy(&len, key, sizeof(int));
+                space+=len+sizeof(int);
+                break;
+        }
+        space += SLOT_SIZE + sizeof(int);   // + the size of an index
+        return empty>=space;
+    }
+
     void Leaf::getInfo(int *info, char *leafData) {
         memset(info, 0, sizeof(int)*LEAF_SIZE);
         auto base = leafData+PAGE_SIZE;
@@ -299,10 +314,6 @@ namespace PeterDB {
             memcpy(&info[i], base-offset, sizeof(int));
             offset += sizeof(int);
         }
-    }
-
-    void Leaf::buildLeaf(char *data, int parent, int previous, int next) {
-
     }
 
     void Leaf::createLeaf(char *page, int parent, int pre, int next) {
@@ -339,4 +350,63 @@ namespace PeterDB {
 
     }
 
+    bool Leaf::haveSpace(char *data, const Attribute &attr, const char *key) {
+        int* info = new int [LEAF_SIZE];
+        getInfo(info, data);
+        auto empty = PAGE_SIZE - info[DATA_OFFSET] - info[INFO_OFFSET];
+        int space = 0;
+        switch (attr.type) {
+            case TypeInt:
+            case TypeReal:
+                space+=4;
+                break;
+            case TypeVarChar:
+                int len = 0;
+                memcpy(&len, key, sizeof(int));
+                space+=len+sizeof(int);
+                break;
+        }
+        space += SLOT_SIZE + sizeof(RID);   // + the size of an index
+        return empty>=space;
+    }
+
+    float Tool::compare(char *key1, char *key2, Attribute &attr) {
+        switch (attr.type) {
+            case TypeInt:
+            {
+                int intVal1 = *(int*)key1;
+                int intVal2 = *(int*)key2;
+                return intVal1-intVal2;
+            }
+            case TypeReal:
+            {
+                float floatVal1 = *(float*)key1;
+                float floatVal2 = *(float*)key2;
+                if((floatVal1-floatVal2)<FLOAT_DIFF)return 0;
+                else return floatVal1-floatVal2;
+            }
+            case TypeVarChar:
+            {
+                int len1 = 0;
+                int len2 = 0;
+
+                memcpy(&len1, key1, sizeof(int));
+                memcpy(&len2, key2, sizeof(int));
+
+                char* val1 = new char [len1+1];
+                memset(val1, 0, len1+1);
+                char* val2 = new char [len2+1];
+                memset(val2, 0, len2+1);
+
+                memcpy(val1, key1, len1);
+                memcpy(val2, key2, len2);
+
+                auto res = strcmp(val1, val2);
+                delete [] val1;
+                delete [] val2;
+                return res;
+            }
+        }
+        return 0;
+    }
 } // namespace PeterDB
