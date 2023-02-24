@@ -365,15 +365,15 @@ namespace PeterDB {
         memcpy(newData, data_pivot, dataLen);
         memcpy(newData+PAGE_SIZE-sizeof(int)*LEAF_SIZE-infoLen, info_pivot, infoLen);
         // Update info
+        memset(data+slot.first, 0, info[DATA_OFFSET] - slot.first);
+        memset(info_pivot, 0, infoLen+SLOT_SIZE);
         Tool::updateInfo(info, d, slot.first, sizeof(int)*LEAF_SIZE + SLOT_SIZE*d);
         writeInfo(data, info);
-        memset(data_pivot, 0, dataLen);
-        memset(info_pivot, 0, infoLen);
 
         int* newInfo = new int [LEAF_SIZE];
         getInfo(newInfo, newData);
-        Tool::updateInfo(info, count-d-1, dataLen, infoLen);
-        writeInfo(newData, info);
+        Tool::updateInfo(newInfo, count-d-1, dataLen, infoLen);
+        writeInfo(newData, newInfo);
     }
 
     void Leaf::getInfo(int *info, char *leafData) {
@@ -422,8 +422,8 @@ namespace PeterDB {
 
         int* newInfo = new int [LEAF_SIZE];
         getInfo(newInfo, newData);
-        Tool::updateInfo(info, count-d, dataLen, infoLen);
-        writeInfo(newData, info);
+        Tool::updateInfo(newInfo, count-d, dataLen, infoLen);
+        writeInfo(newData, newInfo);
     }
 
     // Only write info to in-memory data, don't flush back to disk
@@ -475,12 +475,12 @@ namespace PeterDB {
         Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, &offset, &left, LEAF_SIZE);
         slot_len = len;
         // Insert an entry in the middle
-        if(offset!=info[DATA_OFFSET]){
-            Tool::moveBack(leafData, offset, len+sizeof(RID), info[DATA_OFFSET]-offset);
+        if(offset!=info[DATA_OFFSET]) {
+            Tool::moveBack(leafData, offset, len + sizeof(RID), info[DATA_OFFSET] - offset);
             auto slot = Tool::getSlot(leafData, left, LEAF_SIZE);
             slot_len = slot.second;
             Tool::writeSlot(leafData, offset, len, left, LEAF_SIZE);
-            Tool::updateSlot(leafData, info, len+sizeof(RID), LEAF_SIZE, left+1);
+            Tool::updateSlot(leafData, info, len + sizeof(RID), LEAF_SIZE, left + 1);
         }
 
         auto pos = leafData + offset;
