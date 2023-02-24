@@ -275,6 +275,65 @@ namespace PeterDB {
         std::cout<<"{\"keys\": [";
 
         std::queue<int> children;
+        int* info = new int [NODE_SIZE];
+        getInfo(info, data);
+        int child = 0;
+        int count = info[SLOT_NUM];
+        char* key = new char [PAGE_SIZE];
+        int intKey = 0, strLength = 0;
+        float floatKey = 0;
+        char* stringKey = new char [PAGE_SIZE];
+        //keys
+
+        for (int i = 0; i < count; i++){
+            auto slot = Tool::getSlot(data, i, NODE_SIZE);
+            memset(key, 0, PAGE_SIZE);
+            memcpy(key, data + slot.first, slot.second);
+            memcpy(&child, data + slot.first - sizeof(int), sizeof(int));
+            children.push(child);
+
+            std::cout<< "\"";
+            switch(attribute.type){
+                case TypeVarChar:
+                    memcpy(&strLength, key, sizeof(int));
+                    memcpy(stringKey, key + sizeof(int), strLength);
+                    stringKey[strLength] = '\0';
+                    std::cout<<( reinterpret_cast< char const* >(stringKey));
+                    break;
+                case TypeInt:
+                    memcpy(&intKey, key, sizeof(int));
+                    std::cout<<intKey;
+                    break;
+                case TypeReal:
+                    memcpy(&floatKey, key, sizeof(int));
+                    std::cout<<floatKey;
+                    break;
+            }
+            std::cout<<"\"";
+            if (i != count - 1) {std::cout<<",";}
+        }
+        memcpy(&child, data + info[DATA_OFFSET]-sizeof(int), sizeof(int));
+        children.push(child);
+
+        delete [] data;
+        delete [] key;
+        delete [] stringKey;
+        std::cout<<"],"<<std::endl;
+
+        //children
+        std::cout << std::string(depth * 2, ' ');
+        std::cout<<"\"children\": ["<<std::endl;
+        while(!children.empty()){
+            std::cout << std::string(depth * 2, ' ');
+            std::cout<<"    ";
+            print(ixFileHandle, attribute, children.front(), depth + 4);
+            children.pop();
+            if (!children.empty()){ std::cout<<",";}
+            std::cout<<std::endl;
+        }
+        std::cout << std::string(depth * 2, ' ');
+        std::cout<<"]}";
+
     }
     // Binary search to find the key
     int Node::findKey(char *data, const Attribute &attr, const char *key) {
@@ -437,7 +496,48 @@ namespace PeterDB {
     }
 
     void Leaf::print(char *data, const Attribute &attr) {
+        std::cout<<"{\"keys\": [";
+        int* info = new int [LEAF_SIZE];
+        getInfo(info, data);
+        int count = info[SLOT_NUM];
+        int strLength = 0;
+        char* key = new char [PAGE_SIZE];
+        char* stringKey = new char [PAGE_SIZE];
 
+        int intKey = 0;
+        float floatKey = 0;
+
+
+        for (int i = 0; i < count; i++){
+            auto slot = Tool::getSlot(data, i, LEAF_SIZE);
+            memset(key, 0, PAGE_SIZE);
+            memcpy(key, data + slot.first, slot.second);
+            RID rid;
+            memcpy(&rid, data+slot.first+slot.second, sizeof(RID));
+
+            std::cout<< "\"";
+            switch(attr.type){
+                case TypeVarChar:
+                    memcpy(&strLength, key, sizeof(int));
+                    memcpy(stringKey, key + sizeof(int), strLength);
+                    stringKey[strLength] = '\0';
+                    std::cout<<( reinterpret_cast< char const* >(stringKey));
+                    break;
+                case TypeInt:
+                    memcpy(&intKey, key, sizeof(int));
+                    std::cout<<intKey;
+                    break;
+                case TypeReal:
+                    memcpy(&floatKey, key, sizeof(int));
+                    std::cout<<floatKey;
+                    break;
+            }
+            std::cout<<":[("<<rid.pageNum<<","<<rid.slotNum<<")]\"";
+            if (i != count - 1) {std::cout<<",";}
+        }
+        delete [] key;
+        delete [] stringKey;
+        std::cout<<"]}";
     }
 
     bool Leaf::haveSpace(char *data, const Attribute &attr, const char *key) {
