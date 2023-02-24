@@ -126,9 +126,21 @@ namespace PeterDB {
     public:
         static float compare(char* key1, char* key2, Attribute& attr);
 
-        static void writeSlot(char *data, int *info, int len);
+        static void writeSlot(char *data, int offset, int len, int i, int size);
+
+        static void appendSlot(char *data, int *info, int len);
 
         static void updateInfo(int *info, int slot_num, int data_offset, int info_offset);
+
+        static std::pair<unsigned, unsigned> getSlot(char *page, int i, int size);
+
+        static void getKey(char *data, unsigned int pos, unsigned int len, char *key);
+
+        static void search(char *data, Attribute &attr, char *key, int *pos, int* left, int size);
+
+        static void moveBack(char *data, int offset, int distance, int length);
+
+        static void updateSlot(char *data, int *info, int dis, int size, int i);
     };
 
     // mainly for child entry of insert
@@ -149,8 +161,6 @@ namespace PeterDB {
 
         static bool isNode(char* pageData);
 
-        static void search(int pageNum, const char* key, const Attribute& attr);
-
         static void insertEntry(IXFileHandle& ixFileHandle, int pageNum, Attribute& attr, keyEntry& entry, RID& rid, childEntry* child);
 
         static void deleteEntry(IXFileHandle& ixFileHandle, int paPageNum, int pageNum, const Attribute &attr, keyEntry& entry, childEntry* child);
@@ -167,8 +177,6 @@ namespace PeterDB {
 
         static void writeInfo(char *data, int *info);
 
-        static std::pair<unsigned, unsigned> getSlot(char *page, int i);
-
         static void removeKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry entry, const Attribute &attr);
 
         static void print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int i);
@@ -180,8 +188,6 @@ namespace PeterDB {
 
         static void deleteEntry(char* leafData, const Attribute& attr, keyEntry& entry);
 
-        static void search(const char* leafData, keyEntry& entry, const Attribute& attr);
-
         static void getInfo(int* info, char* leafData);
 
         static bool haveSpace(char *data, const Attribute &attr, const char *key);
@@ -189,8 +195,6 @@ namespace PeterDB {
         static void createLeaf(char *page, int parent, int pre, int next);
 
         static void split(char *data, char *newData);
-
-        static std::pair<unsigned, unsigned> getSlot(char *page, int i);
 
         static void writeInfo(char *data, int *info);
 
