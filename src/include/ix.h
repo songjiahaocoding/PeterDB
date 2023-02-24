@@ -127,6 +127,8 @@ namespace PeterDB {
         static float compare(char* key1, char* key2, Attribute& attr);
 
         static void writeSlot(char *data, int *info, int len);
+
+        static void updateInfo(int *info, int slot_num, int data_offset, int info_offset);
     };
 
     // mainly for child entry of insert

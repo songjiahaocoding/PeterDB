@@ -355,6 +355,37 @@ namespace PeterDB {
         return slot;
     }
 
+    void Node::split(char *data, char *newData, char *middle) {
+        int* info = new int [NODE_SIZE];
+        getInfo(info, data);
+        auto count = info[SLOT_NUM];
+        int d = count/2;
+        auto slot = getSlot(data, d);
+
+        int len = slot.first+slot.second+sizeof(RID);
+        auto dataLen = info[DATA_OFFSET]-len;
+        auto infoLen = SLOT_SIZE*(count-d-1);
+
+        auto data_pivot = data+len;
+        auto info_pivot = data+PAGE_SIZE-info[INFO_OFFSET];
+
+        memcpy(middle, data+slot.first, slot.second);
+
+        // Transfer data
+        memcpy(newData, data_pivot, dataLen);
+        memcpy(newData+PAGE_SIZE-sizeof(int)*LEAF_SIZE-infoLen, info_pivot, infoLen);
+        // Update info
+        Tool::updateInfo(info, d, slot.first, sizeof(int)*LEAF_SIZE + SLOT_SIZE*d);
+        writeInfo(data, info);
+        memset(data_pivot, 0, dataLen);
+        memset(info_pivot, 0, infoLen);
+
+        int* newInfo = new int [LEAF_SIZE];
+        getInfo(newInfo, newData);
+        Tool::updateInfo(info, count-d-1, dataLen, infoLen);
+        writeInfo(newData, info);
+    }
+
     void Leaf::getInfo(int *info, char *leafData) {
         memset(info, 0, sizeof(int)*LEAF_SIZE);
         auto base = leafData+PAGE_SIZE;
@@ -382,28 +413,26 @@ namespace PeterDB {
         getInfo(info, data);
         auto count = info[SLOT_NUM];
         int d = count/2;
-
         auto slot = getSlot(data, d-1);
-        auto data_pivot = data+slot.first+slot.second;
-        auto info_pivot = data+PAGE_SIZE-sizeof(int)*LEAF_SIZE-SLOT_SIZE*d;
-        auto dataLen = info[DATA_OFFSET]- slot.first-slot.second;
+
+        int len = slot.first+slot.second+sizeof(RID);
+        auto dataLen = info[DATA_OFFSET]- len;
         auto infoLen = SLOT_SIZE*(count-d);
 
+        auto data_pivot = data+len;
+        auto info_pivot = data+PAGE_SIZE-info[INFO_OFFSET];
+        // Transfer data
         memcpy(newData, data_pivot, dataLen);
-        memcpy(newData+PAGE_SIZE-sizeof(int)*LEAF_SIZE, info_pivot, infoLen);
-
-        info[SLOT_NUM] = d;
-        info[DATA_OFFSET] = slot.first+slot.second;
-        info[INFO_OFFSET] = sizeof(int)*LEAF_SIZE + SLOT_SIZE*d;
+        memcpy(newData+PAGE_SIZE-sizeof(int)*LEAF_SIZE-infoLen, info_pivot, infoLen);
+        // Update info
+        Tool::updateInfo(info, d, len, sizeof(int)*LEAF_SIZE + SLOT_SIZE*d);
         writeInfo(data, info);
         memset(data_pivot, 0, dataLen);
         memset(info_pivot, 0, infoLen);
 
         int* newInfo = new int [LEAF_SIZE];
         getInfo(newInfo, newData);
-        newInfo[SLOT_NUM] = count-d;
-        newInfo[DATA_OFFSET] = dataLen;
-        newInfo[INFO_OFFSET] += infoLen;
+        Tool::updateInfo(info, count-d, dataLen, infoLen);
         writeInfo(newData, info);
     }
 
@@ -516,5 +545,11 @@ namespace PeterDB {
         memcpy(data+PAGE_SIZE-info[INFO_OFFSET]-SLOT_SIZE, &slot, SLOT_SIZE);
         info[INFO_OFFSET] += SLOT_SIZE;
         info[SLOT_NUM]++;
+    }
+
+    void Tool::updateInfo(int *info, int slot_num, int data_offset, int info_offset) {
+        info[SLOT_NUM] = slot_num;
+        info[DATA_OFFSET] = data_offset;
+        info[INFO_OFFSET] = info_offset;
     }
 } // namespace PeterDB
