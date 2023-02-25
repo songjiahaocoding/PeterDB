@@ -142,6 +142,7 @@ namespace PeterDB {
 
     RC IX_ScanIterator::init(IXFileHandle &handle, const Attribute &attr, const void *low, const void *high,
                              bool lowInclusive, bool highInclusive) {
+        if(handle.fileHandle.file== nullptr) return -1;
         if (handle.getRoot()==-1)return -1;
         this->attr = attr;
 
