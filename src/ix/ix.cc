@@ -112,9 +112,11 @@ namespace PeterDB {
     }
 
     IX_ScanIterator::IX_ScanIterator() {
+
     }
 
     IX_ScanIterator::~IX_ScanIterator() {
+
     }
 
     RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
@@ -164,7 +166,7 @@ namespace PeterDB {
         this->highInclusive = highInclusive;
         this->pageNum = handle.getRoot();
         this->slotNum = 0;
-        this->fileHandle = handle;
+        this->fileHandle = &handle;
         this->page = new char [PAGE_SIZE];
 
         moveToLeft();
@@ -172,6 +174,59 @@ namespace PeterDB {
     }
 
     void IX_ScanIterator::moveToLeft() {
+        int root = fileHandle->getRoot();
+        if (pageNum == -1) return;
+
+        int rc = fileHandle->readPage(pageNum, page);
+        if(Node::isNode(page)){
+            if (low == nullptr){
+                memcpy(&pageNum, page, sizeof(int));
+            } else {
+                pageNum = Node::findKey(page, attr, low);
+            }
+            moveToLeft();
+        } else {
+            int* info = new int [LEAF_SIZE];
+            Leaf::getInfo(info, page);
+            curCount = info[SLOT_NUM];
+            // when lowKey is nullptr, the slot number should be 0, which default value is 0 already
+            if (low == nullptr){
+                //skip if the current page is empty
+                while (slotNum >= curCount) {
+                    pageNum = info[NEXT];
+                    if (pageNum == -1) return;
+                    fileHandle->readPage(pageNum, page);
+                    slotNum = 0;
+                    Leaf::getInfo(info, page);
+                    this->curCount = info[SLOT_NUM];
+                }
+                delete [] info;
+                return;
+            }
+            char* oldKey = new char [PAGE_SIZE];
+            float diff = 0;
+            int slot = 0, offset = 0, len = 0;
+            Tool::search(page, attr, low, &offset, &slot, &len, LEAF_SIZE);
+            Tool::getKey(page, offset, len, oldKey);
+            diff = Tool::compare(low, oldKey, attr);
+
+            //when the lowkey is not inclusive, scan until the value satisfy
+            while (!lowInclusive && diff == 0){
+                increaseRID();
+                auto slot = Tool::getSlot(page, slotNum, LEAF_SIZE);
+                Tool::getKey(page, slot.first, slot.second, oldKey);
+                diff = Tool::compare(low, oldKey, attr);
+            }
+            //the key is not exist in this leaf page
+            if (slotNum == curCount){
+                increaseRID();
+            }
+            delete [] oldKey;
+            delete [] info;
+        }
+    }
+
+    void IX_ScanIterator::increaseRID() {
 
     }
 
@@ -391,7 +446,7 @@ namespace PeterDB {
         out << std::string(depth * 2, ' ');
         out<<"]}";
     }
-    // Binary search to find the key
+    // Binary search to find the pageNum to the left of the key
     int Node::findKey(char *data, const Attribute &attr, const char *key) {
         int* info = new int [NODE_SIZE];
         getInfo(info, data);
@@ -628,7 +683,8 @@ namespace PeterDB {
             memcpy(&len, entry.key, sizeof(int));
             len+=sizeof(int);
         }
-        Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, &offset, &left, LEAF_SIZE);
+        int tmp;
+        Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, &offset, &left, &tmp, LEAF_SIZE);
         slot_len = len;
         // Insert an entry in the middle
         if(offset!=info[DATA_OFFSET]) {
@@ -710,7 +766,7 @@ namespace PeterDB {
         info[INFO_OFFSET] = info_offset;
     }
     // binary search to find the key bigger
-    void Tool::search(char *data, Attribute &attr, char *key, int *pos, int* left, int size) {
+    void Tool::search(char *data, Attribute &attr, char *key, int *pos, int* left, int* len, int size) {
         int* info = new int [NODE_SIZE];
         Node::getInfo(info, data);
 

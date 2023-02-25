@@ -87,14 +87,17 @@ namespace PeterDB {
         bool highInclusive;
         int pageNum;
         int slotNum;
-        IXFileHandle& fileHandle;
+        int curCount;
+        IXFileHandle* fileHandle;
 
-        Attribute& attr;
+        Attribute attr;
 
         RC init(IXFileHandle &handle, const Attribute &attr, const void *low, const void *high, bool lowInclusive,
                 bool highInclusive);
 
         void moveToLeft();
+
+        void increaseRID();
     };
 
     class IXFileHandle {
@@ -154,7 +157,7 @@ namespace PeterDB {
 
         static void getKey(char *data, unsigned int pos, unsigned int len, char *key);
 
-        static void search(char *data, Attribute &attr, char *key, int *pos, int* left, int size);
+        static void search(char *data, Attribute &attr, char *key, int *pos, int* left, int* len, int size);
 
         static void moveBack(char *data, int offset, int distance, int length);
 
@@ -217,6 +220,8 @@ namespace PeterDB {
         static void writeInfo(char *data, int *info);
 
         static void print(char *data, const Attribute &attr, std::ostream &out);
+
+
     };
 }// namespace PeterDB
 #endif // _ix_h_
