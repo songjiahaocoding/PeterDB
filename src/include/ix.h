@@ -159,11 +159,15 @@ namespace PeterDB {
 
         static void getKey(char *data, unsigned int pos, unsigned int len, char *key);
 
-        static void search(char *data, Attribute &attr, char *key, int *pos, int* left, int* len, int size);
+        static void search(char *data, Attribute &attr, char *key, int& pos, int& left, int& len, int size);
 
         static void moveBack(char *data, int offset, int distance, int length);
 
         static void updateSlot(char *data, int *info, int dis, int size, int i);
+
+        static void shiftEntry(char *data, int i, int pos, int len, int *info, int size);
+
+        static void writeInfo(char *data, int *info, int size);
     };
 
     // mainly for child entry of insert
@@ -184,7 +188,7 @@ namespace PeterDB {
 
         static void insertEntry(IXFileHandle& ixFileHandle, int pageNum, Attribute& attr, keyEntry& entry, RID& rid, childEntry* child);
 
-        static void deleteEntry(IXFileHandle& ixFileHandle, int paPageNum, int pageNum, const Attribute &attr, keyEntry& entry, childEntry* child);
+        static RC deleteEntry(IXFileHandle& ixFileHandle, int paPageNum, int pageNum, const Attribute &attr, keyEntry& entry, RID& rid, childEntry* child);
 
         static void getInfo(int* info, char* data);
 
@@ -209,7 +213,7 @@ namespace PeterDB {
     public:
         static void insertEntry(char* leafData, const Attribute& attr, keyEntry& entry, RID& rid);
 
-        static void deleteEntry(char* leafData, const Attribute& attr, keyEntry& entry);
+        static RC deleteEntry(char *leafData, const Attribute &attr, keyEntry &entry, RID &rid);
 
         static void getInfo(int* info, char* leafData);
 
@@ -224,6 +228,7 @@ namespace PeterDB {
         static void print(char *data, const Attribute &attr, std::ostream &out);
 
 
+        static bool equal(RID &rid, char *pos, int len);
     };
 }// namespace PeterDB
 #endif // _ix_h_
