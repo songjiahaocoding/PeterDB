@@ -1,6 +1,8 @@
 #include <iostream>
 #include <queue>
 #include "src/include/ix.h"
+#include <cstring>
+#include <climits>
 
 namespace PeterDB {
     IXFileHandle::IXFileHandle() {
