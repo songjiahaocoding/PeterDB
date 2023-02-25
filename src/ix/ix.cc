@@ -135,14 +135,14 @@ namespace PeterDB {
 
     RC IX_ScanIterator::close() {
         delete [] page;
-        delete [] low;
-        delete [] high;
+        if(low != nullptr)delete [] low;
+        if(high != nullptr)delete [] high;
         return 0;
     }
 
     RC IX_ScanIterator::init(IXFileHandle &handle, const Attribute &attr, const void *low, const void *high,
                              bool lowInclusive, bool highInclusive) {
-        if(handle.fileHandle.file== nullptr) return -1;
+        if (handle.fileHandle.file== nullptr) return -1;
         if (handle.getRoot()==-1)return -1;
         this->attr = attr;
 
@@ -246,7 +246,7 @@ namespace PeterDB {
         while (slotNum >= curCount){
             Leaf::getInfo(info, page);
             pageNum = info[NEXT];
-            if (pageNum == -1) return;
+            if (pageNum == -1)break;
             fileHandle->readPage(pageNum, page);
             slotNum = 0;
             Leaf::getInfo(info, page);
@@ -388,7 +388,10 @@ namespace PeterDB {
         }
         else {
             auto rc = Leaf::deleteEntry(data, attr, entry, rid);
-            if(rc!=0)return rc;
+            if(rc!=0){
+                delete [] data;
+                return rc;
+            }
             ixFileHandle.writePage(pageNum, data);
         }
         delete [] data;
@@ -402,7 +405,9 @@ namespace PeterDB {
     bool Node::isNode(char *pageData) {
         int* info = new int [NODE_SIZE];
         getInfo(info, pageData);
-        return info[NODE_TYPE] != LEAF;
+        auto type = info[NODE_TYPE];
+        delete [] info;
+        return type != LEAF;
     }
 
     void Node::print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int depth, std::ostream &out) {
@@ -593,6 +598,7 @@ namespace PeterDB {
         info[NODE_TYPE] = LEAF;
         info[NEXT] = next;
         writeInfo(page, info);
+        delete [] info;
     }
 
     void Leaf::split(char *data, char *newData) {
@@ -672,6 +678,7 @@ namespace PeterDB {
         }
         delete [] key;
         delete [] stringKey;
+        delete [] info;
         out<<"]}";
     }
 
@@ -751,6 +758,7 @@ namespace PeterDB {
         getInfo(info, leafData);
 
         Tool::shiftEntry(leafData, i, pos, len+sizeof(RID), info, LEAF_SIZE);
+        delete [] info;
         return 0;
     }
 
@@ -828,12 +836,16 @@ namespace PeterDB {
         if(l==info[SLOT_NUM]){
             pos = info[DATA_OFFSET];
             left = -1;
+            delete [] info;
+            delete [] middle;
             return;
         }
         auto slot = getSlot(data, l, size);
         pos = slot.first;
         left = l;
         len = slot.second;
+        delete [] middle;
+        delete [] info;
     }
 
     std::pair<unsigned, unsigned>  Tool::getSlot(char *page, int i, int size){
