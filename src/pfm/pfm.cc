@@ -158,20 +158,6 @@ namespace PeterDB {
         return false;
     }
 
-    int FileHandle::getRoot() {
-        return infoPage->info[ROOT_ID]-1;
-    }
-
-    void FileHandle::setRoot(unsigned num) {
-        infoPage -> info[ROOT_ID] = num+1;
-        infoPage ->flushInfoPage(file);
-    }
-
-    void FileHandle::updateRoot(int rootNum) {
-        infoPage->info[ROOT_ID] = rootNum + 1;
-        infoPage->flushInfoPage(file);
-    }
-
     infoPage::infoPage() {
         for (int i = 0; i < INFO_NUM; ++i) {
             info[i] = 0;

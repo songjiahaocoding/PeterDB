@@ -10,7 +10,7 @@
 # define IX_EOF (-1)  // end of the index scan
 
 namespace PeterDB {
-    #define NULL -1
+    #define NULL_NODE -1
 
     class IX_ScanIterator;
 
@@ -107,6 +107,8 @@ namespace PeterDB {
         RC appendPage(const void *data);                                    // Append a specific page
         unsigned getNumberOfPages();                                        // Get the number of pages in the file
         void setRoot(unsigned int num);
+
+        char* rootPage;
     };
 
     // the structure of metadata for intermediate node
@@ -179,7 +181,7 @@ namespace PeterDB {
 
         static void removeKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry entry, const Attribute &attr);
 
-        static void print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int i);
+        static void print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int i, std::ostream &out);
     };
     // Leaf node
     class Leaf {
@@ -198,7 +200,7 @@ namespace PeterDB {
 
         static void writeInfo(char *data, int *info);
 
-        static void print(char *data, const Attribute &attr);
+        static void print(char *data, const Attribute &attr, std::ostream &out);
     };
 }// namespace PeterDB
 #endif // _ix_h_

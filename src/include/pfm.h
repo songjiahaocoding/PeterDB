@@ -37,7 +37,6 @@ namespace PeterDB {
         WRITE_NUM,
         APPEND_NUM,
         ACTIVE_PAGE_NUM,
-        ROOT_ID,
         INFO_NUM
     };
 
@@ -76,9 +75,6 @@ namespace PeterDB {
 
         char* pageData;
         FILE *file;
-
-        int getRoot();
-        void setRoot(unsigned num);
 
         void updateRoot(int rootNum);
 
