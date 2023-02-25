@@ -43,6 +43,8 @@ namespace PeterDBTesting {
 
     }
 
+    TEST_F(IX_Test, cleanup){}
+
     TEST_F(IX_Test, insert_one_entry_and_print) {
         // Functions tested
         // 1. Insert one entry
