@@ -562,6 +562,7 @@ namespace PeterDB {
         getInfo(newInfo, newData);
         Tool::updateInfo(newInfo, count-d-1, dataLen, infoLen);
         writeInfo(newData, newInfo);
+        Tool::updateSlot(newData, newInfo, len,NODE_SIZE, 0);
     }
 
     int Node::searchPage(char *page, Attribute attribute, char *key) {
@@ -619,7 +620,9 @@ namespace PeterDB {
         int* newInfo = new int [LEAF_SIZE];
         getInfo(newInfo, newData);
         Tool::updateInfo(newInfo, count-d, dataLen, infoLen);
+
         writeInfo(newData, newInfo);
+        Tool::updateSlot(newData, newInfo, -len, LEAF_SIZE, 0);
     }
 
     // Only write info to in-memory data, don't flush back to disk
