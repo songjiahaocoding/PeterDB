@@ -116,15 +116,27 @@ namespace PeterDB {
     }
 
     IX_ScanIterator::~IX_ScanIterator() {
-
     }
 
     RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
-        return -1;
+        if(pageNum==-1)return IX_EOF;
+
+        auto slot = Tool::getSlot(page, slotNum, LEAF_SIZE);
+        memcpy(key, page+slot.first, slot.second);
+        if(!inRange(static_cast<char *>(key))){
+            memset(key, 0, slot.second);
+            return IX_EOF;
+        }
+        memcpy(&rid, page+slot.first+slot.second, sizeof(RID));
+        increaseRID();
+        return 0;
     }
 
     RC IX_ScanIterator::close() {
-        return -1;
+        delete [] page;
+        delete [] low;
+        delete [] high;
+        return 0;
     }
 
     RC IX_ScanIterator::init(IXFileHandle &handle, const Attribute &attr, const void *low, const void *high,
@@ -174,15 +186,14 @@ namespace PeterDB {
     }
 
     void IX_ScanIterator::moveToLeft() {
-        int root = fileHandle->getRoot();
         if (pageNum == -1) return;
 
-        int rc = fileHandle->readPage(pageNum, page);
+        fileHandle->readPage(pageNum, page);
         if(Node::isNode(page)){
             if (low == nullptr){
                 memcpy(&pageNum, page, sizeof(int));
             } else {
-                pageNum = Node::findKey(page, attr, low);
+                pageNum = Node::searchPage(page, attr, low);
             }
             moveToLeft();
         } else {
@@ -227,7 +238,27 @@ namespace PeterDB {
     }
 
     void IX_ScanIterator::increaseRID() {
+        slotNum++;
+        int* info = new int [LEAF_SIZE];
+        //needs to switch to next page
+        while (slotNum >= curCount){
+            Leaf::getInfo(info, page);
+            pageNum = info[NEXT];
+            if (pageNum == -1) return;
+            fileHandle->readPage(pageNum, page);
+            slotNum = 0;
+            Leaf::getInfo(info, page);
+            curCount = info[SLOT_NUM];
+        }
+        delete [] info;
+    }
 
+    bool IX_ScanIterator::inRange(char* key) {
+        if(high== nullptr)return true;
+
+        float diff = Tool::compare(key, high, attr);
+
+        return highInclusive ? diff<=0:diff<0;
     }
 
 
@@ -246,7 +277,7 @@ namespace PeterDB {
         char* data = new char [PAGE_SIZE];
         ixFileHandle.readPage(pageNum, data);
         if(Node::isNode(data)){
-            auto num = Node::findKey(data, attr, entry.key);
+            auto num = Node::searchPage(data, attr, entry.key);
             insertEntry(ixFileHandle, num, attr, entry, rid, child);
             if(child != nullptr){
                 keyEntry newEntry;
@@ -345,7 +376,7 @@ namespace PeterDB {
         char* data = new char [PAGE_SIZE];
         ixFileHandle.readPage(pageNum, data);
         if(Node::isNode(data)){
-            auto num = Node::findKey(data, attr, entry.key);
+            auto num = Node::searchPage(data, attr, entry.key);
             deleteEntry(ixFileHandle, pageNum, num, attr, entry, child);
             // No use of child because of the lazy delete
 //            keyEntry newEntry;
@@ -446,18 +477,6 @@ namespace PeterDB {
         out << std::string(depth * 2, ' ');
         out<<"]}";
     }
-    // Binary search to find the pageNum to the left of the key
-    int Node::findKey(char *data, const Attribute &attr, const char *key) {
-        int* info = new int [NODE_SIZE];
-        getInfo(info, data);
-        int l = 0, r = info[SLOT_NUM], mid;
-        while(l<r){
-            mid = l+(r-l)/2;
-
-        }
-
-        return 0;
-    }
 
     void Node::createNode(char *data, int type, int parent) {
         memset(data, 0, PAGE_SIZE);
@@ -544,6 +563,14 @@ namespace PeterDB {
         getInfo(newInfo, newData);
         Tool::updateInfo(newInfo, count-d-1, dataLen, infoLen);
         writeInfo(newData, newInfo);
+    }
+
+    int Node::searchPage(char *page, Attribute attribute, char *key) {
+        int pos = 0, len = 0, i = 0;
+        Tool::search(page, attribute, key, &pos, &i, &len, NODE_SIZE);
+        int num = 0;
+        memcpy(&num, page+pos-sizeof(int), sizeof(int));
+        return num;
     }
 
     void Leaf::getInfo(int *info, char *leafData) {
@@ -782,6 +809,7 @@ namespace PeterDB {
         }
         if(l==info[SLOT_NUM]){
             pos = &info[DATA_OFFSET];
+            left = reinterpret_cast<int *>(-1);
             return;
         }
         auto slot = getSlot(data, l, size);

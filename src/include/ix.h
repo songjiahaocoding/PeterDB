@@ -98,6 +98,8 @@ namespace PeterDB {
         void moveToLeft();
 
         void increaseRID();
+
+        bool inRange(char* key);
     };
 
     class IXFileHandle {
@@ -178,8 +180,6 @@ namespace PeterDB {
     // intermediate node
     class Node {
     public:
-        static int findKey(char* data, const Attribute& attr, const char* key);
-
         static bool isNode(char* pageData);
 
         static void insertEntry(IXFileHandle& ixFileHandle, int pageNum, Attribute& attr, keyEntry& entry, RID& rid, childEntry* child);
@@ -201,6 +201,8 @@ namespace PeterDB {
         static void removeKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry entry, const Attribute &attr);
 
         static void print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int i, std::ostream &out);
+
+        static int searchPage(char *page, Attribute attribute, char *low);
     };
     // Leaf node
     class Leaf {
