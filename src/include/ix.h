@@ -79,6 +79,22 @@ namespace PeterDB {
 
         // Terminate index scan
         RC close();
+
+        char* low;
+        char* high;
+        char* page;
+        bool lowInclusive;
+        bool highInclusive;
+        int pageNum;
+        int slotNum;
+        IXFileHandle& fileHandle;
+
+        Attribute& attr;
+
+        RC init(IXFileHandle &handle, const Attribute &attr, const void *low, const void *high, bool lowInclusive,
+                bool highInclusive);
+
+        void moveToLeft();
     };
 
     class IXFileHandle {

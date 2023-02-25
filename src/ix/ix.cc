@@ -100,7 +100,7 @@ namespace PeterDB {
                           bool lowKeyInclusive,
                           bool highKeyInclusive,
                           IX_ScanIterator &ix_ScanIterator) {
-        return -1;
+        return ix_ScanIterator.init(ixFileHandle, attribute, lowKey, highKey, lowKeyInclusive, highKeyInclusive);
     }
 
     // Construct the B+ tree in a recursive way, print in JSON format
@@ -123,6 +123,56 @@ namespace PeterDB {
 
     RC IX_ScanIterator::close() {
         return -1;
+    }
+
+    RC IX_ScanIterator::init(IXFileHandle &handle, const Attribute &attr, const void *low, const void *high,
+                             bool lowInclusive, bool highInclusive) {
+        if (handle.getRoot()==-1)return -1;
+        this->attr = attr;
+
+        int strLength = 0;
+        if (low != nullptr){
+            this->low = new char [PAGE_SIZE];
+            memset(this->low, 0, PAGE_SIZE);
+            switch(attr.type){
+                case TypeInt:
+                case TypeReal:
+                    memcpy(this->low, low, sizeof(int));
+                    break;
+                case TypeVarChar:
+                    memcpy(&strLength, low, sizeof(int));
+                    memcpy(this->low, low, sizeof(int) + strLength);
+                    break;
+            }
+        }
+        if (high != nullptr){
+            this->high = new char [PAGE_SIZE];
+            memset(this->high, 0, PAGE_SIZE);
+            switch(attr.type){
+                case TypeInt:
+                case TypeReal:
+                    memcpy(this->high, high, sizeof(int));
+                    break;
+                case TypeVarChar:
+                    memcpy(&strLength, high, sizeof(int));
+                    memcpy(this->high, high, sizeof(int) + strLength);
+                    break;
+            }
+        }
+
+        this->lowInclusive = lowInclusive;
+        this->highInclusive = highInclusive;
+        this->pageNum = handle.getRoot();
+        this->slotNum = 0;
+        this->fileHandle = handle;
+        this->page = new char [PAGE_SIZE];
+
+        moveToLeft();
+        return 0;
+    }
+
+    void IX_ScanIterator::moveToLeft() {
+
     }
 
 
