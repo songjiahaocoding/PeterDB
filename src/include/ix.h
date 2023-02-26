@@ -213,7 +213,7 @@ namespace PeterDB {
     public:
         static void insertEntry(char* leafData, const Attribute& attr, keyEntry& entry, RID& rid);
 
-        static RC deleteEntry(char* leafData, const Attribute& attr, keyEntry& entry, RID& rid);
+        static RC deleteEntry(char *leafData, const Attribute &attr, keyEntry &entry, RID &rid);
 
         static void getInfo(int* info, char* leafData);
 
@@ -228,7 +228,7 @@ namespace PeterDB {
         static void print(char *data, const Attribute &attr, std::ostream &out);
 
 
-        static bool equal(char *key, RID &rid, char* pos, int len);
+        static bool equal(RID &rid, char *pos, int len);
     };
 }// namespace PeterDB
 #endif // _ix_h_
