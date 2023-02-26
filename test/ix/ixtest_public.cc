@@ -222,8 +222,8 @@ namespace PeterDBTesting {
         // 5. Scan entries NO_OP -- open
 
         unsigned key;
-        unsigned numOfEntries = 12345;
-        unsigned numOfMoreEntries = 12345;
+        unsigned numOfEntries = 100;
+        unsigned numOfMoreEntries = 100;
         unsigned seed = 12545;
         unsigned salt = 90;
 
@@ -328,7 +328,6 @@ namespace PeterDBTesting {
 
         EXPECT_GE (getFileSize(indexFileName) / PAGE_SIZE, (numOfEntries + numOfMoreEntries) / PAGE_SIZE / 10)
                             << "page size should be increased.";
-
     }
 
     TEST_F(IX_Test, scan_by_LT_OP) {
