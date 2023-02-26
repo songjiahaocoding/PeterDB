@@ -311,7 +311,7 @@ namespace PeterDB {
                     childEntry newChild = {middleKey, newPageNum};
                     child = &newChild;
                     // Deal with the special case there is only one leaf which just splitted before
-                    if(info[NODE_TYPE] == ROOT || ixFileHandle.getNumberOfPages()==2){
+                    if(info[NODE_TYPE] == ROOT || ixFileHandle.getNumberOfPages()==3){
                         char* root = new char [PAGE_SIZE];
                         Node::createNode(root, ROOT, NULL_NODE);
                         keyEntry entry1;
@@ -347,8 +347,10 @@ namespace PeterDB {
                 Leaf::getInfo(info, data);
                 Leaf::createLeaf(newPage, info[PARENT], pageNum, info[NEXT]);
                 Leaf::split(data, newPage);
-
+                Leaf::getInfo(info, data);
                 info[NEXT] = ixFileHandle.getNumberOfPages();
+                Leaf::writeInfo(data, info);
+
                 auto slot = Tool::getSlot(newPage, 0, LEAF_SIZE);
                 char* newKey = new char [slot.second];
                 memset(newKey, 0, slot.second);
@@ -362,7 +364,7 @@ namespace PeterDB {
                     Leaf::insertEntry(newPage, attr, entry, rid);
                 }
 
-                Leaf::writeInfo(data, info);
+
                 ixFileHandle.appendPage(newPage);
 
                 delete [] newPage;
@@ -720,10 +722,19 @@ namespace PeterDB {
         // Insert an entry in the middle
         if(offset!=info[DATA_OFFSET]) {
             Tool::moveBack(leafData, offset, len + sizeof(RID), info[DATA_OFFSET] - offset);
-            auto slot = Tool::getSlot(leafData, left, LEAF_SIZE);
-            slot_len = slot.second;
+            int num = info[SLOT_NUM]-left;
+            auto info_pos = leafData+PAGE_SIZE-info[INFO_OFFSET];
+            memmove(info_pos-SLOT_SIZE, info_pos, SLOT_SIZE*num);
+            // Write data and slot
+            auto data_pos = leafData+offset;
+            memcpy(data_pos, entry.key, len);
+            memcpy(data_pos+len, &rid, sizeof(RID));
             Tool::writeSlot(leafData, offset, len, left, LEAF_SIZE);
+            // Update info and slot
+            Tool::updateInfo(info, info[SLOT_NUM]+1, info[DATA_OFFSET]+len+sizeof(RID), info[INFO_OFFSET]+SLOT_SIZE);
+            Tool::writeInfo(leafData, info, LEAF_SIZE);
             Tool::updateSlot(leafData, info, len + sizeof(RID), LEAF_SIZE, left + 1);
+            return;
         }
 
         auto pos = leafData + offset;
@@ -763,7 +774,7 @@ namespace PeterDB {
     }
 
     void Tool::moveBack(char* data, int offset, int distance, int length){
-        memmove(data+offset, data+offset+distance, length);
+        memmove(data+offset+distance, data+offset, length);
     }
 
     float Tool::compare(char *key1, char *key2, Attribute &attr) {
@@ -818,7 +829,8 @@ namespace PeterDB {
         info[DATA_OFFSET] = data_offset;
         info[INFO_OFFSET] = info_offset;
     }
-    // binary search to find the key bigger
+
+    // binary search to find the left border of the key
     void Tool::search(char *data, Attribute &attr, char *key, int& pos, int& left, int& len, int size) {
         int* info = new int [NODE_SIZE];
         Node::getInfo(info, data);
