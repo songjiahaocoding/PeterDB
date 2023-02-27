@@ -25,6 +25,10 @@ namespace PeterDB {
     };
 
     struct keyEntry{
+        keyEntry() = default;
+
+        keyEntry(int left, char *string, int right);
+
         int left = -1;
         char* key;
         int right = -1;
@@ -132,6 +136,7 @@ namespace PeterDB {
         FileHandle fileHandle;
 
         int getRoot();
+        int root;
 
         RC readPage(PageNum pageNum, void *data);                           // Get a specific page
         RC writePage(PageNum pageNum, const void *data);                    // Write a specific page
@@ -196,9 +201,9 @@ namespace PeterDB {
     public:
         static bool isNode(char* pageData);
 
-        static void insertEntry(IXFileHandle& ixFileHandle, int pageNum, Attribute& attr, keyEntry& entry, RID& rid, childEntry* child);
+        static void insertEntry(IXFileHandle& ixFileHandle, int pageNum, Attribute& attr, keyEntry& entry, RID& rid, keyEntry* child);
 
-        static RC deleteEntry(IXFileHandle& ixFileHandle, int paPageNum, int pageNum, const Attribute &attr, keyEntry& entry, RID& rid, childEntry* child);
+        static RC deleteEntry(IXFileHandle& ixFileHandle, int paPageNum, int pageNum, const Attribute &attr, keyEntry& entry, RID& rid, keyEntry* child);
 
         static void getInfo(int* info, char* data);
 
