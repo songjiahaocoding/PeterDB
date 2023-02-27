@@ -9,7 +9,6 @@ namespace PeterDB {
         ixReadPageCounter = 0;
         ixWritePageCounter = 0;
         ixAppendPageCounter = 0;
-        root = -1;
         rootPage = new char [PAGE_SIZE];
     }
     IXFileHandle::~IXFileHandle() {
@@ -20,10 +19,15 @@ namespace PeterDB {
         return fileHandle.collectCounterValues(readPageCount, writePageCount, appendPageCount);
     }
     int IXFileHandle::getRoot() {
+        if(getNumberOfPages()==0)return -1;
+        int root = 0;
+        readPage(0, rootPage);
+        memcpy(&root, rootPage, sizeof(int));
         return root;
     }
     void IXFileHandle::setRoot(unsigned num){
-        this->root = num;
+        memcpy(rootPage, &num, sizeof(int));
+        writePage(0, rootPage);
     }
     RC IXFileHandle::readPage(PageNum pageNum, void *data) {
         memset(data, 0, PAGE_SIZE);
@@ -66,15 +70,12 @@ namespace PeterDB {
         if(root==-1){
             // Initialization
             char* data = new char [PAGE_SIZE];
-            Node::createNode(data, ROOT, NULL_NODE);
-            keyEntry entry = {-1, (char*)key, 1};
-            Node::appendKey(data, entry, const_cast<Attribute &>(attribute));
+            memset(data, 0, PAGE_SIZE);
             ixFileHandle.appendPage(data);
-
-            Leaf::createLeaf(data, 0, NULL_NODE, NULL_NODE);
+            Leaf::createLeaf(data, NULL_NODE, NULL_NODE, NULL_NODE);
             Leaf::insertEntry(data, attribute, entry, const_cast<RID &>(rid));
             ixFileHandle.appendPage(data);
-            ixFileHandle.setRoot(0);
+            ixFileHandle.setRoot(1);
             delete [] data;
         } else {
             Node::insertEntry(ixFileHandle, root, const_cast<Attribute &>(attribute), entry, const_cast<RID &>(rid), nullptr);
@@ -121,7 +122,7 @@ namespace PeterDB {
     RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
         if(pageNum==-1)return IX_EOF;
 
-        auto slot = Tool::getSlot(page, slotNum, LEAF_SIZE);
+        auto slot = Tool::getSlot(page, slotNum);
         memcpy(key, page+slot.offset, slot.len);
         if(!inRange(static_cast<char *>(key))){
             memset(key, 0, slot.len);
@@ -144,8 +145,6 @@ namespace PeterDB {
         if (handle.fileHandle.file== nullptr) return -1;
         if (handle.getRoot()==-1)return -1;
         this->attr = attr;
-        this->low = nullptr;
-        this->high = nullptr;
 
         int strLength = 0;
         if (low != nullptr){
@@ -201,10 +200,10 @@ namespace PeterDB {
             }
             moveToLeft();
         } else {
-            int* info = new int [LEAF_SIZE];
+            int* info = new int [TREE_NODE_SIZE];
             Leaf::getInfo(info, page);
             curCount = info[SLOT_NUM];
-            auto slot = Tool::getSlot(page, 0, LEAF_SIZE);
+            auto slot = Tool::getSlot(page, 0);
             curRIDNum = slot.rid_num;
             // when lowKey is nullptr, the slot number should be 0, which default value is 0 already
             if (low == nullptr){
@@ -221,7 +220,7 @@ namespace PeterDB {
                         curCount = info[SLOT_NUM];
                     }
                     ridNum = 0;
-                    slot = Tool::getSlot(page, slotNum, LEAF_SIZE);
+                    slot = Tool::getSlot(page, slotNum);
                     curRIDNum = slot.rid_num;
                 }
                 delete [] info;
@@ -230,14 +229,14 @@ namespace PeterDB {
             char* oldKey = new char [PAGE_SIZE];
             float diff = 0;
             int id = 0, offset = 0, len = 0;
-            Tool::search(page, attr, low, offset, id, len, LEAF_SIZE);
+            Tool::search(page, attr, low, offset, id, len);
             Tool::getKey(page, offset, len, oldKey);
             diff = Tool::compare(low, oldKey, attr);
 
             //when the lowkey is not inclusive, scan until the value satisfy
             while (!lowInclusive && diff == 0){
                 moveToNext();
-                slot = Tool::getSlot(page, slotNum, LEAF_SIZE);
+                slot = Tool::getSlot(page, slotNum);
                 Tool::getKey(page, slot.offset, slot.len, oldKey);
                 diff = Tool::compare(low, oldKey, attr);
             }
@@ -251,7 +250,7 @@ namespace PeterDB {
     }
 
     void IX_ScanIterator::moveToNext() {
-        int* info = new int [LEAF_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         ridNum++;
         Leaf::getInfo(info, page);
         while(ridNum >= curRIDNum && pageNum!=-1) {
@@ -266,7 +265,7 @@ namespace PeterDB {
                 curCount = info[SLOT_NUM];
             }
             ridNum = 0;
-            auto slot = Tool::getSlot(page, slotNum, LEAF_SIZE);
+            auto slot = Tool::getSlot(page, slotNum);
             curRIDNum = slot.rid_num;
         }
         delete [] info;
@@ -282,55 +281,32 @@ namespace PeterDB {
 
 
     void Node::getInfo(int *info, char *data) {
-        memset(info, 0, sizeof(int)*NODE_SIZE);
+        memset(info, 0, sizeof(int)*TREE_NODE_SIZE);
         auto base = data+PAGE_SIZE;
         int offset = sizeof(int);
-        for(int i=0;i<NODE_SIZE;i++){
+        for(int i=0;i<TREE_NODE_SIZE;i++){
             memcpy(&info[i], base-offset, sizeof(int));
             offset += sizeof(int);
         }
     }
 
     void Node::insertEntry(IXFileHandle &ixFileHandle, int pageNum, Attribute &attr, keyEntry& entry, RID& rid,
-                      keyEntry *child) {
+                      childEntry *child) {
         char* data = new char [PAGE_SIZE];
         ixFileHandle.readPage(pageNum, data);
         if(Node::isNode(data)){
             auto num = Node::searchPage(data, attr, entry.key);
-            if(num==-1){
-                char* newPage = new char [PAGE_SIZE];
-                memset(newPage, 0, PAGE_SIZE);
-                int newNum = ixFileHandle.getNumberOfPages();
-                Leaf::createLeaf(newPage, pageNum, NULL_NODE, 1);
-                ixFileHandle.appendPage(newPage);
-                delete [] newPage;
-                num = newNum;
-            }
             insertEntry(ixFileHandle, num, attr, entry, rid, child);
             if(child != nullptr){
                 keyEntry newEntry;
                 newEntry.key = child->key;
-                newEntry.right = child->right;
-                float diff = Tool::compare(child->key, entry.key, attr);
-                if(diff==0){
-                    int offset = 0, len = 0, i = 0;
-                    Tool::search(data, attr, entry.key, offset, i, len, LEAF_SIZE);
-                    memcpy(data+offset+len, &child->right, sizeof(int));
-                    int* info = new int [NODE_SIZE];
-                    getInfo(info, data);
-                    info[DATA_OFFSET] += sizeof(int);
-                    writeInfo(data, info);
-                    delete [] info;
-                    child = nullptr;
-                    return;
-                }
+                newEntry.right = child->pageNum;
                 if(Node::haveSpace(data, entry.key, attr)){
                     Node::appendKey(data, newEntry, attr);
-                    child = nullptr;
                 }
                 else {
                     char* newPage = new char [PAGE_SIZE];
-                    int* info = new int [NODE_SIZE];
+                    int* info = new int [TREE_NODE_SIZE];
 
                     // Node will send the middleKey to upper layer
                     Node::getInfo(info, data);
@@ -348,7 +324,7 @@ namespace PeterDB {
                         Node::insertEntry(ixFileHandle, newPageNum, attr, newEntry, rid, nullptr);
                     }
 
-                    keyEntry newChild = {pageNum, middleKey, newPageNum};
+                    childEntry newChild = {middleKey, newPageNum};
                     child = &newChild;
                     // Deal with the special case there is only one leaf which just splitted before
                     if(info[NODE_TYPE] == ROOT || ixFileHandle.getNumberOfPages()==3){
@@ -357,7 +333,7 @@ namespace PeterDB {
                         keyEntry entry1;
                         entry1.left = pageNum;
                         entry1.right = newPageNum;
-                        auto slot = Tool::getSlot(newPage, 0, NODE_SIZE);
+                        auto slot = Tool::getSlot(newPage, 0);
                         entry1.key = new char [slot.len];
                         memset(entry1.key, 0, slot.len);
                         memcpy(entry1.key, newPage+slot.offset, slot.len);
@@ -380,7 +356,7 @@ namespace PeterDB {
             }
             else {
                 char* newPage = new char [PAGE_SIZE];
-                int* info = new int [LEAF_SIZE];
+                int* info = new int [TREE_NODE_SIZE];
                 char* middleKey = new char [PAGE_SIZE];
                 memset(middleKey, 0, PAGE_SIZE);
 
@@ -391,11 +367,11 @@ namespace PeterDB {
                 info[NEXT] = ixFileHandle.getNumberOfPages();
                 Leaf::writeInfo(data, info);
 
-                auto slot = Tool::getSlot(newPage, 0, LEAF_SIZE);
+                auto slot = Tool::getSlot(newPage, 0);
                 char* newKey = new char [slot.len];
                 memset(newKey, 0, slot.len);
                 memcpy(newKey, newPage+slot.offset, slot.len);
-                keyEntry newChild = {pageNum, newKey, info[NEXT]};
+                childEntry newChild = {newKey, info[NEXT]};
                 child = &newChild;
 
                 if(Tool::compare(entry.key, middleKey, attr)<0){
@@ -416,7 +392,7 @@ namespace PeterDB {
     }
 
     RC Node::deleteEntry(IXFileHandle &ixFileHandle, int paPageNum, int pageNum, const Attribute &attr, keyEntry &entry,
-                           RID& rid, keyEntry *child) {
+                           RID& rid, childEntry *child) {
         char* data = new char [PAGE_SIZE];
         ixFileHandle.readPage(pageNum, data);
         if(Node::isNode(data)){
@@ -441,11 +417,11 @@ namespace PeterDB {
     }
 
     void Node::writeInfo(char *data, int *info) {
-        Tool::writeInfo(data, info, NODE_SIZE);
+        Tool::writeInfo(data, info);
     }
 
     bool Node::isNode(char *pageData) {
-        int* info = new int [NODE_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, pageData);
         auto type = info[NODE_TYPE];
         delete [] info;
@@ -464,7 +440,7 @@ namespace PeterDB {
         out<<"{\"keys\": [";
 
         std::queue<int> children;
-        int* info = new int [NODE_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, data);
         int child = 0;
         int count = info[SLOT_NUM];
@@ -475,11 +451,10 @@ namespace PeterDB {
         //keys
 
         for (int i = 0; i < count; i++){
-            auto slot = Tool::getSlot(data, i, NODE_SIZE);
+            auto slot = Tool::getSlot(data, i);
             memset(key, 0, PAGE_SIZE);
             memcpy(key, data + slot.offset, slot.len);
             memcpy(&child, data + slot.offset - sizeof(int), sizeof(int));
-            if(child==-1)continue;
             children.push(child);
 
             out<< "\"";
@@ -488,27 +463,26 @@ namespace PeterDB {
                     memcpy(&strLength, key, sizeof(int));
                     memcpy(stringKey, key + sizeof(int), strLength);
                     stringKey[strLength] = '\0';
-                    out<<( reinterpret_cast< char const* >(stringKey));
+                    std::cout<<( reinterpret_cast< char const* >(stringKey));
                     break;
                 case TypeInt:
                     memcpy(&intKey, key, sizeof(int));
-                    out<<intKey;
+                    std::cout<<intKey;
                     break;
                 case TypeReal:
                     memcpy(&floatKey, key, sizeof(int));
-                    out<<floatKey;
+                    std::cout<<floatKey;
                     break;
             }
             out<<"\"";
             if (i != count - 1) {out<<",";}
         }
         memcpy(&child, data + info[DATA_OFFSET]-sizeof(int), sizeof(int));
-        if(child!=-1)children.push(child);
+        children.push(child);
 
         delete [] data;
         delete [] key;
         delete [] stringKey;
-        delete [] info;
         out<<"],"<<std::endl;
 
         //children
@@ -523,22 +497,21 @@ namespace PeterDB {
             out<<std::endl;
         }
         out << std::string(depth * 2, ' ');
-        out<<"]}"<<std::endl;
+        out<<"]}";
     }
 
     void Node::createNode(char *data, int type, int parent) {
         memset(data, 0, PAGE_SIZE);
-        int* info = new int [NODE_SIZE];
-        memset(info, 0, sizeof(int)*NODE_SIZE);
-        info[INFO_OFFSET] = sizeof(int)*NODE_SIZE;
+        int* info = new int [TREE_NODE_SIZE];
+        memset(info, 0, sizeof(int)*TREE_NODE_SIZE);
+        info[INFO_OFFSET] = sizeof(int)*TREE_NODE_SIZE;
         info[PARENT] = parent;
         info[NODE_TYPE] = type;
         writeInfo(data, info);
-        delete [] info;
     }
 
     bool Node::haveSpace(char *data, const char *key, Attribute& attr) {
-        int* info = new int [NODE_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, data);
         auto empty = PAGE_SIZE - info[DATA_OFFSET] - info[INFO_OFFSET];
         int space = 0;
@@ -558,33 +531,37 @@ namespace PeterDB {
     }
 
     void Node::appendKey(char* data, keyEntry &entry, Attribute &attr) {
-        int* info = new int [NODE_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, data);
 
         auto pos = data + info[DATA_OFFSET];
-        int len = sizeof (int);
+        if(info[DATA_OFFSET]==0){
+            memcpy(pos, &entry.left, sizeof(int));
+            pos += sizeof(int);
+            info[DATA_OFFSET]+=sizeof(int);
+        }
+
+        int len = 4;
         if(attr.type==TypeVarChar){
             memcpy(&len, entry.key, sizeof(int));
             len+=sizeof(int);
         }
 
-        memcpy(pos, &entry.left, sizeof(int));
-        pos += sizeof(int);
-        info[DATA_OFFSET] +=sizeof (int);
         memcpy(pos, entry.key, len);
         memcpy(pos+len, &entry.right, sizeof(int));
         Tool::appendSlot(data, info, len);
-        info[DATA_OFFSET] += len + sizeof(int);
+
+        info[DATA_OFFSET] += len+sizeof(int);
         writeInfo(data, info);
         delete [] info;
     }
 
     void Node::split(char *data, char *newData, char *middle) {
-        int* info = new int [NODE_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, data);
         auto count = info[SLOT_NUM];
         int d = count/2;
-        auto slot = Tool::getSlot(data, d, NODE_SIZE);
+        auto slot = Tool::getSlot(data, d);
 
         int len = slot.offset+slot.len+sizeof(RID);
         auto dataLen = info[DATA_OFFSET]-len;
@@ -597,33 +574,33 @@ namespace PeterDB {
 
         // Transfer data
         memcpy(newData, data_pivot, dataLen);
-        memcpy(newData+PAGE_SIZE-sizeof(int)*LEAF_SIZE-infoLen, info_pivot, infoLen);
+        memcpy(newData+PAGE_SIZE-sizeof(int)*TREE_NODE_SIZE-infoLen, info_pivot, infoLen);
         // Update info
         memset(data+slot.offset, 0, info[DATA_OFFSET] - slot.offset);
         memset(info_pivot, 0, infoLen+Slot_Size);
-        Tool::updateInfo(info, d, slot.offset, sizeof(int)*LEAF_SIZE + Slot_Size*d);
+        Tool::updateInfo(info, d, slot.offset, sizeof(int)*TREE_NODE_SIZE + Slot_Size*d);
         writeInfo(data, info);
 
-        int* newInfo = new int [LEAF_SIZE];
+        int* newInfo = new int [TREE_NODE_SIZE];
         getInfo(newInfo, newData);
         Tool::updateInfo(newInfo, count-d-1, dataLen, infoLen);
         writeInfo(newData, newInfo);
-        Tool::updateSlot(newData, newInfo, len,NODE_SIZE, 0);
+        Tool::updateSlot(newData, newInfo, len, 0);
     }
 
     int Node::searchPage(char *page, Attribute attribute, char *key) {
         int pos = 0, len = 0, i = 0;
-        Tool::search(page, attribute, key, pos, i, len, NODE_SIZE);
+        Tool::search(page, attribute, key, pos, i, len);
         int num = 0;
         memcpy(&num, page+pos-sizeof(int), sizeof(int));
         return num;
     }
 
     void Leaf::getInfo(int *info, char *leafData) {
-        memset(info, 0, sizeof(int)*LEAF_SIZE);
+        memset(info, 0, sizeof(int)*TREE_NODE_SIZE);
         auto base = leafData+PAGE_SIZE;
         int offset = sizeof(int);
-        for(int i=0;i<LEAF_SIZE;i++){
+        for(int i=0;i<TREE_NODE_SIZE;i++){
             memcpy(&info[i], base-offset, sizeof(int));
             offset += sizeof(int);
         }
@@ -631,9 +608,9 @@ namespace PeterDB {
 
     void Leaf::createLeaf(char *page, int parent, int pre, int next) {
         memset(page, 0, PAGE_SIZE);
-        int* info = new int [LEAF_SIZE];
-        memset(info, 0, sizeof(int)*LEAF_SIZE);
-        info[INFO_OFFSET] = sizeof(int)*LEAF_SIZE;
+        int* info = new int [TREE_NODE_SIZE];
+        memset(info, 0, sizeof(int)*TREE_NODE_SIZE);
+        info[INFO_OFFSET] = sizeof(int)*TREE_NODE_SIZE;
         info[PARENT] = parent;
         info[PRE] = pre;
         info[NODE_TYPE] = LEAF;
@@ -643,11 +620,11 @@ namespace PeterDB {
     }
 
     void Leaf::split(char *data, char *newData) {
-        int* info = new int [LEAF_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, data);
         auto count = info[SLOT_NUM];
         int d = count/2;
-        auto slot = Tool::getSlot(data, d-1, LEAF_SIZE);
+        auto slot = Tool::getSlot(data, d-1);
 
         int len = slot.offset+slot.len+sizeof(RID);
         auto dataLen = info[DATA_OFFSET]- len;
@@ -657,29 +634,29 @@ namespace PeterDB {
         auto info_pivot = data+PAGE_SIZE-info[INFO_OFFSET];
         // Transfer data
         memcpy(newData, data_pivot, dataLen);
-        memcpy(newData+PAGE_SIZE-sizeof(int)*LEAF_SIZE-infoLen, info_pivot, infoLen);
+        memcpy(newData+PAGE_SIZE-sizeof(int)*TREE_NODE_SIZE-infoLen, info_pivot, infoLen);
         // Update info
-        Tool::updateInfo(info, d, len, sizeof(int)*LEAF_SIZE + Slot_Size*d);
+        Tool::updateInfo(info, d, len, sizeof(int)*TREE_NODE_SIZE + Slot_Size*d);
         writeInfo(data, info);
         memset(data_pivot, 0, dataLen);
         memset(info_pivot, 0, infoLen);
 
-        int* newInfo = new int [LEAF_SIZE];
+        int* newInfo = new int [TREE_NODE_SIZE];
         getInfo(newInfo, newData);
         Tool::updateInfo(newInfo, count-d, dataLen, infoLen);
 
         writeInfo(newData, newInfo);
-        Tool::updateSlot(newData, newInfo, -len, LEAF_SIZE, 0);
+        Tool::updateSlot(newData, newInfo, -len, 0);
     }
 
     // Only write info to in-memory data, don't flush back to disk
     void Leaf::writeInfo(char *data, int *info) {
-        Tool::writeInfo(data, info, LEAF_SIZE);
+        Tool::writeInfo(data, info);
     }
 
     void Leaf::print(char *data, const Attribute &attr, std::ostream &out) {
         out<<"{\"keys\": [";
-        int* info = new int [LEAF_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, data);
         int count = info[SLOT_NUM];
         int strLength = 0;
@@ -691,7 +668,7 @@ namespace PeterDB {
 
 
         for (int i = 0; i < count; i++){
-            auto slot = Tool::getSlot(data, i, LEAF_SIZE);
+            auto slot = Tool::getSlot(data, i);
             if(slot.rid_num==0)continue;
             memset(key, 0, PAGE_SIZE);
             memcpy(key, data + slot.offset, slot.len);
@@ -731,7 +708,7 @@ namespace PeterDB {
     }
 
     bool Leaf::haveSpace(char *data, const Attribute &attr, const char *key) {
-        int* info = new int [LEAF_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, data);
         auto empty = PAGE_SIZE - info[DATA_OFFSET] - info[INFO_OFFSET];
         int space = 0;
@@ -751,7 +728,7 @@ namespace PeterDB {
     }
 
     void Leaf::insertEntry(char *leafData, const Attribute &attr, keyEntry &entry, RID &rid) {
-        int* info = new int [LEAF_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, leafData);
 
         int offset = 0;
@@ -763,7 +740,7 @@ namespace PeterDB {
             len+=sizeof(int);
         }
         int keyLen;
-        Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, offset, left, keyLen, LEAF_SIZE);
+        Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, offset, left, keyLen);
         slot_len = len;
         // Insert an entry in the middle
         if(offset!=info[DATA_OFFSET]) {
@@ -781,11 +758,11 @@ namespace PeterDB {
                 auto data_pos = leafData+offset;
                 memcpy(data_pos, entry.key, len);
                 memcpy(data_pos+len, &rid, sizeof(RID));
-                Tool::writeSlot(leafData, offset, len, 1, left, LEAF_SIZE);
+                Tool::writeSlot(leafData, offset, len, 1, left);
                 // Update info and slot
                 Tool::updateInfo(info, info[SLOT_NUM]+1, info[DATA_OFFSET]+len+sizeof(RID), info[INFO_OFFSET]+Slot_Size);
-                Tool::writeInfo(leafData, info, LEAF_SIZE);
-                Tool::updateSlot(leafData, info, len + sizeof(RID), LEAF_SIZE, left + 1);
+                Tool::writeInfo(leafData, info);
+                Tool::updateSlot(leafData, info, len + sizeof(RID), left + 1);
             }
             return;
         }
@@ -809,10 +786,10 @@ namespace PeterDB {
 
     RC Leaf::deleteEntry(char *leafData, const Attribute &attr, keyEntry &entry, RID &rid) {
         int pos = 0, len = 0, i = 0;
-        Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, pos, i, len, LEAF_SIZE);
+        Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, pos, i, len);
         float diff = Tool::compare(entry.key, leafData+pos, const_cast<Attribute &>(attr));
         if(diff!=0)return -1;
-        auto slot = Tool::getSlot(leafData, i, LEAF_SIZE);
+        auto slot = Tool::getSlot(leafData, i);
         auto off = pos+len;
         RID r;
         bool found = false;
@@ -821,24 +798,24 @@ namespace PeterDB {
             off+=sizeof (RID);
         }
         if(!found)return -1;
-        int* info = new int [LEAF_SIZE];
+        int* info = new int [TREE_NODE_SIZE];
         getInfo(info, leafData);
 
-        Tool::shiftEntry(leafData, i, off-sizeof(RID), sizeof(RID), info, LEAF_SIZE);
-        Tool::writeSlot(leafData, slot.offset, slot.len, slot.rid_num-1, i, LEAF_SIZE);
+        Tool::shiftEntry(leafData, i, off-sizeof(RID), sizeof(RID), info);
+        Tool::writeSlot(leafData, slot.offset, slot.len, slot.rid_num-1, i);
         delete [] info;
         return 0;
     }
 
     void Leaf::appendToKey(char *data, int* info, const Attribute &attr, int i, RID &rid) {
-        auto slot = Tool::getSlot(data, i, LEAF_SIZE);
+        auto slot = Tool::getSlot(data, i);
         auto pos = slot.offset+slot.len+sizeof(RID)*slot.rid_num;
         Tool::moveBack(data, pos, sizeof(RID), info[DATA_OFFSET]-pos);
         memcpy(data+pos, &rid, sizeof(RID));
         info[DATA_OFFSET] += sizeof(RID);
-        Tool::writeInfo(data, info, LEAF_SIZE);
-        Tool::writeSlot(data, slot.offset, slot.len, slot.rid_num+1, i, LEAF_SIZE);
-        Tool::updateSlot(data, info, sizeof(RID), LEAF_SIZE, i+1);
+        Tool::writeInfo(data, info);
+        Tool::writeSlot(data, slot.offset, slot.len, slot.rid_num+1, i);
+        Tool::updateSlot(data, info, sizeof(RID), i+1);
     }
 
     void Tool::moveBack(char* data, int offset, int distance, int length){
@@ -873,8 +850,8 @@ namespace PeterDB {
                 char* val2 = new char [len2+1];
                 memset(val2, 0, len2+1);
 
-                memcpy(val1, key1+sizeof(int), len1);
-                memcpy(val2, key2+sizeof(int), len2);
+                memcpy(val1, key1, len1);
+                memcpy(val2, key2, len2);
 
                 auto res = strcmp(val1, val2);
                 delete [] val1;
@@ -899,15 +876,15 @@ namespace PeterDB {
     }
 
     // binary search to find the left border of the key
-    void Tool::search(char *data, Attribute &attr, char *key, int& pos, int& left, int& len, int size) {
-        int* info = new int [NODE_SIZE];
+    void Tool::search(char *data, Attribute &attr, char *key, int& pos, int& left, int& len) {
+        int* info = new int [TREE_NODE_SIZE];
         Node::getInfo(info, data);
 
         int l = 0, r = info[SLOT_NUM]-1, mid;
         char* middle = new char [PAGE_SIZE];
         while(l<=r){
             mid = l+(r-l)/2;
-            auto slot = getSlot(data, mid, size);
+            auto slot = getSlot(data, mid);
             getKey(data, slot.offset, slot.len, middle);
             auto diff = compare(middle, key, attr);
             if(diff<0)l = mid+1;
@@ -920,7 +897,7 @@ namespace PeterDB {
             delete [] middle;
             return;
         }
-        auto slot = getSlot(data, l, size);
+        auto slot = getSlot(data, l);
         pos = slot.offset;
         left = l;
         len = slot.len;
@@ -928,8 +905,8 @@ namespace PeterDB {
         delete [] info;
     }
 
-    Slot Tool::getSlot(char *page, int i, int size){
-        auto base = page+PAGE_SIZE-sizeof(int)*size;
+    Slot Tool::getSlot(char *page, int i){
+        auto base = page+PAGE_SIZE-sizeof(int)*TREE_NODE_SIZE;
         auto addr = base - Slot_Size*(i+1);
 
         Slot slot;
@@ -943,43 +920,36 @@ namespace PeterDB {
         memcpy(key, data+pos, len);
     }
 
-    void Tool::writeSlot(char *data, short offset, short len, short rid_num, int i, int size) {
+    void Tool::writeSlot(char *data, short offset, short len, short rid_num, int i) {
         Slot slot = {offset, len, rid_num};
-        auto addr = data+PAGE_SIZE-sizeof(int)*size-Slot_Size*(i+1);
+        auto addr = data+PAGE_SIZE-sizeof(int)*TREE_NODE_SIZE-Slot_Size*(i+1);
         memset(addr, 0, Slot_Size);
         memcpy(addr, &slot, Slot_Size);
     }
 
-    void Tool::updateSlot(char *data, int *info, int dis, int size, int i) {
+    void Tool::updateSlot(char *data, int *info, int dis, int i) {
         for(;i<info[SLOT_NUM];i++){
-            auto slot = getSlot(data, i, size);
+            auto slot = getSlot(data, i);
             slot.offset += dis;
-            writeSlot(data, slot.offset, slot.len, slot.rid_num, i, size);
+            writeSlot(data, slot.offset, slot.len, slot.rid_num, i);
         }
     }
     // To compact the page. Used for deletion
-    void Tool::shiftEntry(char *data, int i, int pos, int len, int *info, int size) {
+    void Tool::shiftEntry(char *data, int i, int pos, int len, int *info) {
         memset(data+pos, 0, len);
         memmove(data+pos+len, data+pos, info[DATA_OFFSET]-pos-len);
 
-        updateSlot(data, info, -len, size, i+1);
+        updateSlot(data, info, -len,  i+1);
         info[DATA_OFFSET] -= len;
-        writeInfo(data, info, size);
+        writeInfo(data, info);
     }
 
-    void Tool::writeInfo(char* data, int* info, int size){
+    void Tool::writeInfo(char* data, int* info){
         auto base = data+PAGE_SIZE;
         int offset = sizeof(int);
-        for(int i=0;i<size;i++){
+        for(int i=0;i<TREE_NODE_SIZE;i++){
             memcpy(base-offset, &info[i], sizeof(int));
             offset += sizeof(int);
         }
     }
-
-    keyEntry::keyEntry(int left, char *string, int right) {
-        this->left = left;
-        this->key = string;
-        this->right = right;
-    }
-
 } // namespace PeterDB

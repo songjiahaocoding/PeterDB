@@ -151,38 +151,34 @@ namespace PeterDB {
     enum {
         NODE_TYPE = PAGE_INFO_NUM,
         PARENT,
-        NODE_SIZE
-    };
-    // The additional structure for leaf node
-    enum {
-        PRE = NODE_SIZE,
+        PRE,
         NEXT,
-        LEAF_SIZE
+        TREE_NODE_SIZE
     };
 
     class Tool{
     public:
         static float compare(char* key1, char* key2, Attribute& attr);
 
-        static void writeSlot(char *data, short offset, short len, short rid_num, int i, int size);
+        static void writeSlot(char *data, short offset, short len, short rid_num, int i);
 
         static void appendSlot(char *data, int *info, short len);
 
         static void updateInfo(int *info, int slot_num, int data_offset, int info_offset);
 
-        static Slot getSlot(char *page, int i, int size);
+        static Slot getSlot(char *page, int i);
 
         static void getKey(char *data, unsigned int pos, unsigned int len, char *key);
 
-        static void search(char *data, Attribute &attr, char *key, int& pos, int& left, int& len, int size);
+        static void search(char *data, Attribute &attr, char *key, int& pos, int& left, int& len);
 
         static void moveBack(char *data, int offset, int distance, int length);
 
-        static void updateSlot(char *data, int *info, int dis, int size, int i);
+        static void updateSlot(char *data, int *info, int dis, int i);
 
-        static void shiftEntry(char *data, int i, int pos, int len, int *info, int size);
+        static void shiftEntry(char *data, int i, int pos, int len, int *info);
 
-        static void writeInfo(char *data, int *info, int size);
+        static void writeInfo(char *data, int *info);
     };
 
     // mainly for child entry of insert
@@ -194,7 +190,6 @@ namespace PeterDB {
         ROOT,
         NODE,
         LEAF,
-        LEAF_ROOT
     };
     // intermediate node
     class Node {
