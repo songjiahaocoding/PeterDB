@@ -96,6 +96,8 @@ namespace PeterDB {
         int pageNum;
         int slotNum;
         int curCount;
+        int ridNum;
+        int curRIDNum;
         IXFileHandle* fileHandle;
 
         Attribute attr;
@@ -105,7 +107,7 @@ namespace PeterDB {
 
         void moveToLeft();
 
-        void increaseRID();
+        void moveToNext();
 
         bool inRange(char* key);
     };
@@ -236,6 +238,8 @@ namespace PeterDB {
         static void print(char *data, const Attribute &attr, std::ostream &out);
 
         static bool equal(RID &rid, char *pos, int len);
+
+        static void appendToKey(char *data, int* info, const Attribute &attr, int i, RID &rid);
     };
 }// namespace PeterDB
 #endif // _ix_h_
