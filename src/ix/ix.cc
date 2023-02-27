@@ -320,7 +320,7 @@ namespace PeterDB {
                     Node::split(data, newPage, middleKey);
 
                     int newPageNum = ixFileHandle.getNumberOfPages();
-                    ixFileHandle.appendPage(newPage);
+
 
                     if(Tool::compare(child->key, middleKey, attr)<0){
                         Node::insertEntry(ixFileHandle, pageNum, attr, *child, rid, nullptr);
@@ -331,20 +331,37 @@ namespace PeterDB {
                     keyEntry newChild = {pageNum, middleKey, newPageNum};
                     child = &newChild;
 
+                    int* newInfo = new int [TREE_NODE_SIZE];
+                    getInfo(newInfo, newPage);
+
                     if(info[NODE_TYPE] == ROOT){
                         char* root = new char [PAGE_SIZE];
                         Node::createNode(root, ROOT, NULL_NODE);
                         keyEntry entry1;
                         entry1.left = pageNum;
-                        entry1.right = newPageNum;
+                        entry1.right = newPageNum+1;
                         auto slot = Tool::getSlot(newPage, 0);
                         entry1.key = new char [slot.len];
                         memset(entry1.key, 0, slot.len);
                         memcpy(entry1.key, newChild.key, slot.len);
                         Node::appendKey(root, entry1, attr);
+
                         ixFileHandle.appendPage(root);
+                        ixFileHandle.setRoot(newPageNum);
+                        info[NODE_TYPE] = NODE;
+                        info[PARENT] = newPageNum;
+                        Tool::writeInfo(data, info);
+
+                        newInfo[PARENT] = newPageNum;
+                        Tool::writeInfo(newPage, newInfo);
+
+                        newPageNum++;
+                        delete [] entry1.key;
                         delete [] root;
                     }
+                    info[NEXT] = newPageNum;
+                    Tool::writeInfo(data, info);
+                    ixFileHandle.appendPage(newPage);
 
                     delete [] newPage;
                     delete [] info;
@@ -590,7 +607,7 @@ namespace PeterDB {
 
         int len = slot.offset+slot.len+sizeof(RID);
         auto dataLen = info[DATA_OFFSET]-len;
-        auto infoLen = Slot_Size*(count-d-1);
+        auto infoLen = Slot_Size*(count-d-1)+sizeof(int)*TREE_NODE_SIZE;
 
         auto data_pivot = data+len;
         auto info_pivot = data+PAGE_SIZE-info[INFO_OFFSET];
@@ -668,7 +685,7 @@ namespace PeterDB {
 
         int* newInfo = new int [TREE_NODE_SIZE];
         getInfo(newInfo, newData);
-        Tool::updateInfo(newInfo, count-d, dataLen, infoLen);
+        Tool::updateInfo(newInfo, count-d, dataLen, infoLen+sizeof(int)*TREE_NODE_SIZE);
 
         Tool::writeInfo(newData, newInfo);
         Tool::updateSlot(newData, newInfo, -len, 0);
