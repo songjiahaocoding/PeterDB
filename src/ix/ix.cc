@@ -268,7 +268,6 @@ namespace PeterDB {
             auto slot = Tool::getSlot(page, slotNum, LEAF_SIZE);
             curRIDNum = slot.rid_num;
         }
-        slotNum++;
         delete [] info;
     }
 
