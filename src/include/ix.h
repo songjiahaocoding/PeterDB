@@ -25,9 +25,8 @@ namespace PeterDB {
     };
 
     struct keyEntry{
+        keyEntry(int left, char *key, int right);
         keyEntry() = default;
-
-        keyEntry(int left, char *string, int right);
 
         int left = -1;
         char* key;
@@ -136,7 +135,6 @@ namespace PeterDB {
         FileHandle fileHandle;
 
         int getRoot();
-        int root;
 
         RC readPage(PageNum pageNum, void *data);                           // Get a specific page
         RC writePage(PageNum pageNum, const void *data);                    // Write a specific page
@@ -181,11 +179,6 @@ namespace PeterDB {
         static void writeInfo(char *data, int *info);
     };
 
-    // mainly for child entry of insert
-    struct childEntry {
-        char* key;
-        int pageNum;
-    };
     enum {
         ROOT,
         NODE,
@@ -210,8 +203,6 @@ namespace PeterDB {
 
         static void split(char *data, char *page, char* middle);
 
-        static void writeInfo(char *data, int *info);
-
         static void removeKey(IXFileHandle &ixFileHandle, int pageNum, keyEntry entry, const Attribute &attr);
 
         static void print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int i, std::ostream &out);
@@ -232,8 +223,6 @@ namespace PeterDB {
         static void createLeaf(char *page, int parent, int pre, int next);
 
         static void split(char *data, char *newData);
-
-        static void writeInfo(char *data, int *info);
 
         static void print(char *data, const Attribute &attr, std::ostream &out);
 
