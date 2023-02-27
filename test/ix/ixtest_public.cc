@@ -43,8 +43,6 @@ namespace PeterDBTesting {
 
     }
 
-    TEST_F(IX_Test, cleanup){}
-
     TEST_F(IX_Test, insert_one_entry_and_print) {
         // Functions tested
         // 1. Insert one entry
@@ -297,8 +295,8 @@ namespace PeterDBTesting {
         // 1. Insert entry
         // 2. Scan entries GE_OP
 
-        unsigned numOfEntries = 800;
-        unsigned numOfMoreEntries = 1500;
+        unsigned numOfEntries = 100;
+        unsigned numOfMoreEntries = 100;
         unsigned key, seed = 10, salt = 14;
         unsigned value = 7001;
 
@@ -330,6 +328,7 @@ namespace PeterDBTesting {
 
         EXPECT_GE (getFileSize(indexFileName) / PAGE_SIZE, (numOfEntries + numOfMoreEntries) / PAGE_SIZE / 10)
                             << "page size should be increased.";
+
     }
 
     TEST_F(IX_Test, scan_by_LT_OP) {

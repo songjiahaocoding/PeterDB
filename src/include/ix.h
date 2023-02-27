@@ -16,6 +16,14 @@ namespace PeterDB {
 
     class IXFileHandle;
 
+
+    #define Slot_Size sizeof(Slot)
+    struct Slot {
+        short offset;
+        short len;
+        short rid_num;
+    };
+
     struct keyEntry{
         int left = -1;
         char* key;
@@ -149,13 +157,13 @@ namespace PeterDB {
     public:
         static float compare(char* key1, char* key2, Attribute& attr);
 
-        static void writeSlot(char *data, int offset, int len, int i, int size);
+        static void writeSlot(char *data, short offset, short len, short rid_num, int i, int size);
 
-        static void appendSlot(char *data, int *info, int len);
+        static void appendSlot(char *data, int *info, short len);
 
         static void updateInfo(int *info, int slot_num, int data_offset, int info_offset);
 
-        static std::pair<unsigned, unsigned> getSlot(char *page, int i, int size);
+        static Slot getSlot(char *page, int i, int size);
 
         static void getKey(char *data, unsigned int pos, unsigned int len, char *key);
 
@@ -226,7 +234,6 @@ namespace PeterDB {
         static void writeInfo(char *data, int *info);
 
         static void print(char *data, const Attribute &attr, std::ostream &out);
-
 
         static bool equal(RID &rid, char *pos, int len);
     };
