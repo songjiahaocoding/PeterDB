@@ -144,6 +144,8 @@ namespace PeterDB {
         if (handle.fileHandle.file== nullptr) return -1;
         if (handle.getRoot()==-1)return -1;
         this->attr = attr;
+        this->low = nullptr;
+        this->high = nullptr;
 
         int strLength = 0;
         if (low != nullptr){
@@ -486,15 +488,15 @@ namespace PeterDB {
                     memcpy(&strLength, key, sizeof(int));
                     memcpy(stringKey, key + sizeof(int), strLength);
                     stringKey[strLength] = '\0';
-                    std::cout<<( reinterpret_cast< char const* >(stringKey));
+                    out<<( reinterpret_cast< char const* >(stringKey));
                     break;
                 case TypeInt:
                     memcpy(&intKey, key, sizeof(int));
-                    std::cout<<intKey;
+                    out<<intKey;
                     break;
                 case TypeReal:
                     memcpy(&floatKey, key, sizeof(int));
-                    std::cout<<floatKey;
+                    out<<floatKey;
                     break;
             }
             out<<"\"";
@@ -506,6 +508,7 @@ namespace PeterDB {
         delete [] data;
         delete [] key;
         delete [] stringKey;
+        delete [] info;
         out<<"],"<<std::endl;
 
         //children
@@ -526,10 +529,12 @@ namespace PeterDB {
     void Node::createNode(char *data, int type, int parent) {
         memset(data, 0, PAGE_SIZE);
         int* info = new int [NODE_SIZE];
+        memset(info, 0, sizeof(int)*NODE_SIZE);
         info[INFO_OFFSET] = sizeof(int)*NODE_SIZE;
         info[PARENT] = parent;
         info[NODE_TYPE] = type;
         writeInfo(data, info);
+        delete [] info;
     }
 
     bool Node::haveSpace(char *data, const char *key, Attribute& attr) {
