@@ -71,8 +71,15 @@ namespace PeterDB {
             // Initialization
             char* data = new char [PAGE_SIZE];
             memset(data, 0, PAGE_SIZE);
+            root = 1;
+            memcpy(data, &root, sizeof(int));
             ixFileHandle.appendPage(data);
+
             Leaf::createLeaf(data, NULL_NODE, NULL_NODE, NULL_NODE);
+            int* info = new int [TREE_NODE_SIZE];
+            Leaf::getInfo(info, data);
+            info[NODE_TYPE] = ROOT;
+            Tool::writeInfo(data, info);
             Leaf::insertEntry(data, attribute, entry, const_cast<RID &>(rid));
             ixFileHandle.appendPage(data);
             ixFileHandle.setRoot(1);
@@ -192,7 +199,7 @@ namespace PeterDB {
         if (pageNum == -1) return;
 
         fileHandle->readPage(pageNum, page);
-        if(Node::isNode(page)){
+        if(Node::isNode(page) && fileHandle->getNumberOfPages()!=2){
             if (low == nullptr){
                 memcpy(&pageNum, page, sizeof(int));
             } else {
@@ -294,7 +301,7 @@ namespace PeterDB {
                       childEntry *child) {
         char* data = new char [PAGE_SIZE];
         ixFileHandle.readPage(pageNum, data);
-        if(Node::isNode(data)){
+        if(Node::isNode(data) && ixFileHandle.getNumberOfPages()!=2){
             auto num = Node::searchPage(data, attr, entry.key);
             insertEntry(ixFileHandle, num, attr, entry, rid, child);
             if(child != nullptr){
@@ -327,7 +334,7 @@ namespace PeterDB {
                     childEntry newChild = {middleKey, newPageNum};
                     child = &newChild;
                     // Deal with the special case there is only one leaf which just splitted before
-                    if(info[NODE_TYPE] == ROOT || ixFileHandle.getNumberOfPages()==3){
+                    if(info[NODE_TYPE] == ROOT){
                         char* root = new char [PAGE_SIZE];
                         Node::createNode(root, ROOT, NULL_NODE);
                         keyEntry entry1;
@@ -395,7 +402,7 @@ namespace PeterDB {
                            RID& rid, childEntry *child) {
         char* data = new char [PAGE_SIZE];
         ixFileHandle.readPage(pageNum, data);
-        if(Node::isNode(data)){
+        if(Node::isNode(data) && ixFileHandle.getNumberOfPages() !=2){
             auto num = Node::searchPage(data, attr, entry.key);
             return deleteEntry(ixFileHandle, pageNum, num, attr, entry, rid,  child);
             // No use of child because of the lazy delete
@@ -431,7 +438,7 @@ namespace PeterDB {
     void Node::print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int depth, std::ostream &out) {
         char* data = new char [PAGE_SIZE];
         ixFileHandle.readPage(root, data);
-        if(!isNode(data)){
+        if(!isNode(data) || ixFileHandle.getNumberOfPages()==2){
             Leaf::print(data, attribute, out);
             delete [] data;
             return;
@@ -850,8 +857,8 @@ namespace PeterDB {
                 char* val2 = new char [len2+1];
                 memset(val2, 0, len2+1);
 
-                memcpy(val1, key1, len1);
-                memcpy(val2, key2, len2);
+                memcpy(val1, key1+sizeof(int), len1);
+                memcpy(val2, key2+sizeof(int), len2);
 
                 auto res = strcmp(val1, val2);
                 delete [] val1;
