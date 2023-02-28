@@ -365,8 +365,8 @@ namespace PeterDBTesting {
         // 1. Insert entry
         // 2. Scan entries GE_OP
 
-        unsigned numOfEntries = 100;
-        unsigned numOfMoreEntries = 100;
+        unsigned numOfEntries = 800;
+        unsigned numOfMoreEntries = 1500;
         unsigned key, seed = 10, salt = 14;
         unsigned value = 7001;
 
