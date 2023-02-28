@@ -363,7 +363,7 @@ namespace PeterDB {
                         delete [] entry1.key;
                         delete [] root;
                     }
-
+                    getInfo(info, data);
                     child->left = pageNum;
                     child->key = middleKey;
                     child->right = newPageNum;
@@ -433,6 +433,7 @@ namespace PeterDB {
                     delete [] entry1.key;
                     delete [] root;
                 }
+                getInfo(info, data);
 
                 slot = Tool::getSlot(newPage, 0);
                 delete [] newKey;
@@ -659,26 +660,27 @@ namespace PeterDB {
     }
 
     void Node::insertKey(char *data, keyEntry entry, Attribute &attr) {
+        int* info = new int [TREE_NODE_SIZE];
+        getInfo(info, data);
         int pos = 0, len = 0, i = 0;
         Tool::search(data, attr, entry.key, pos, i, len);
+        if(i==-1)i=info[SLOT_NUM];
         int attrLen = 4;
         if(attr.type==TypeVarChar){
             memcpy(&attrLen, entry.key, sizeof(int));
             attrLen+=sizeof(int);
         }
         int dis = attrLen+sizeof(int);
-        memmove(data+pos+dis, data+pos, dis);
 
+        memmove(data+pos+dis, data+pos, dis);
         memcpy(data+pos-sizeof(int), &entry.left, sizeof(int));
         memcpy(data+pos, entry.key, attrLen);
         memcpy(data+pos+attrLen, &entry.right, sizeof(int));
 
-        int* info = new int [TREE_NODE_SIZE];
-        getInfo(info, data);
         int num = info[SLOT_NUM]-i;
         auto info_pos = data+PAGE_SIZE-info[INFO_OFFSET];
         memmove(info_pos-Slot_Size, info_pos, Slot_Size*num);
-        Tool::writeSlot(data, pos, len, 1, i);
+        Tool::writeSlot(data, pos, attrLen, 1, i);
 
         Tool::updateInfo(info, info[SLOT_NUM]+1, info[DATA_OFFSET]+dis, info[INFO_OFFSET]+Slot_Size);
         Tool::writeInfo(data, info);

@@ -80,7 +80,7 @@ namespace PeterDBTesting {
         std::stringstream stream;
         ASSERT_EQ(ix.printBTree(ixFileHandle, ageAttr, stream), success)
                                     << "indexManager::printBTree() should succeed.";
-
+        std::cout<<stream.str()<<std::endl;
         validateTree(stream, 1, 1, 0, PAGE_SIZE / 10 / 2, true);
 
     }
@@ -215,6 +215,74 @@ namespace PeterDBTesting {
 
     }
 
+    TEST_F(IX_Test, simple_scan){
+        unsigned key;
+        unsigned numOfEntries = 400;
+        unsigned numOfMoreEntries = 400;
+        unsigned seed = 12545;
+        unsigned salt = 90;
+
+        // insert entries
+        generateAndInsertEntries(numOfEntries, ageAttr, seed, salt);
+
+        // Scan
+        ASSERT_EQ(ix.scan(ixFileHandle, ageAttr, nullptr, nullptr, true, true, ix_ScanIterator), success)
+                                    << "indexManager::scan() should succeed.";
+
+        // Fetch and check all entries
+        std::vector<PeterDB::RID> ridsCopy(rids);
+        int count = 0;
+        while (ix_ScanIterator.getNextEntry(rid, &key) == success) {
+            validateUnorderedRID(key, (int) (count + seed), ridsCopy);
+            count++;
+            if (count % 5000 == 0) {
+                GTEST_LOG_(INFO) << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum;
+            }
+        }
+
+        EXPECT_EQ(count, numOfEntries) << "full scanned count should match inserted.";
+
+        // Close Scan
+        ASSERT_EQ(ix_ScanIterator.close(), success) << "IX_ScanIterator::close() should succeed.";
+
+        ASSERT_EQ(getFileSize(indexFileName) % PAGE_SIZE, 0) << "File should be based on PAGE_SIZE.";
+
+        // insert more entries
+        seed = 12145;
+        salt = 567;
+        generateAndInsertEntries(numOfMoreEntries, ageAttr, seed, salt);
+
+        // Reopen the file
+        reopenIndexFile();
+
+        // Scan again
+        ASSERT_EQ(ix.scan(ixFileHandle, ageAttr, nullptr, nullptr, true, true, ix_ScanIterator), success)
+                                    << "indexManager::scan() on a destroyed file should succeed.";
+
+
+        // Fetch and check all entries
+        count = 0;
+        while (ix_ScanIterator.getNextEntry(rid, &key) == success) {
+            validateUnorderedRID(key, (int) (count + seed), this->rids);
+            count++;
+            if (count % 113 == 0) {
+                GTEST_LOG_(INFO) << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum;
+            }
+
+        }
+
+        EXPECT_EQ(rids.size(), 0) << "all RIDs are scanned";
+        EXPECT_EQ(count, numOfEntries + numOfMoreEntries) << "full scanned count should match inserted.";
+
+        ASSERT_EQ(getFileSize(indexFileName) % PAGE_SIZE, 0) << "File should be based on PAGE_SIZE.";
+
+        // Close Scan
+        ASSERT_EQ(ix_ScanIterator.close(), success) << "IX_ScanIterator::close() should succeed.";
+
+        EXPECT_GE (getFileSize(indexFileName) / PAGE_SIZE, (numOfEntries + numOfMoreEntries) / PAGE_SIZE / 10)
+                            << "page size should be increased.";
+    }
+
     TEST_F(IX_Test, scan_by_NO_OP) {
         // Functions tested
         // 1. Insert multiple entries
@@ -224,8 +292,8 @@ namespace PeterDBTesting {
         // 5. Scan entries NO_OP -- open
 
         unsigned key;
-        unsigned numOfEntries = 100;
-        unsigned numOfMoreEntries = 100;
+        unsigned numOfEntries = 12345;
+        unsigned numOfMoreEntries = 12345;
         unsigned seed = 12545;
         unsigned salt = 90;
 
@@ -704,14 +772,13 @@ namespace PeterDBTesting {
             prepareKeyAndRid(k, key, rid, empNameAttr.length);
             ASSERT_EQ(ix.insertEntry(ixFileHandle, empNameAttr, &key, rid), success)
                                         << "indexManager::insertEntry() should succeed.";
-            if (i == 5) {
+            if (i == 10) {
                 // print BTree, by this time the BTree should have height of 1 - one root (c*) with two leaf nodes
                 // (2 + 3) or (3 + 2)
                 std::stringstream stream;
                 ASSERT_EQ(ix.printBTree(ixFileHandle, empNameAttr, stream), success)
                                             << "indexManager::printBTree() should succeed";
-
-                validateTree(stream, 5, 5, 1, 2);
+                validateTree(stream, 10, 10, 1, 2);
             }
 
         }
@@ -720,6 +787,8 @@ namespace PeterDBTesting {
         std::stringstream stream;
         ASSERT_EQ(ix.printBTree(ixFileHandle, empNameAttr, stream), success)
                                     << "indexManager::printBTree() should succeed.";
+        std::cout<<std::endl;
+        std::cout<< stream.str() << std::endl;
         validateTree(stream, numOfEntries, numOfEntries, 2, 2);
 
     }
