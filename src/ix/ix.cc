@@ -85,6 +85,7 @@ namespace PeterDB {
             ixFileHandle.appendPage(data);
             ixFileHandle.setRoot(1);
             delete [] data;
+            delete [] info;
         } else {
             keyEntry child;
             child.left = -1;
@@ -740,6 +741,7 @@ namespace PeterDB {
 
         Tool::writeInfo(newData, newInfo);
         Tool::updateSlot(newData, newInfo, -len, 0);
+        delete [] info;
     }
 
     void Leaf::print(char *data, const Attribute &attr, std::ostream &out) {
@@ -812,6 +814,7 @@ namespace PeterDB {
                 break;
         }
         space += Slot_Size + sizeof(RID);   // + the size of an index
+        delete [] info;
         return empty>=space;
     }
 
@@ -852,6 +855,7 @@ namespace PeterDB {
                 Tool::writeInfo(leafData, info);
                 Tool::updateSlot(leafData, info, len + sizeof(RID), left + 1);
             }
+            delete [] oldKey;
             return;
         }
 
