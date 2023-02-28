@@ -407,6 +407,7 @@ namespace PeterDB {
 
                 int* newInfo = new int [TREE_NODE_SIZE];
                 getInfo(newInfo, newPage);
+                getInfo(info, data);
 
                 if(info[NODE_TYPE] == ROOT){
                     char* root = new char [PAGE_SIZE];
@@ -718,7 +719,7 @@ namespace PeterDB {
         int d = count/2;
         auto slot = Tool::getSlot(data, d-1);
 
-        int len = slot.offset+slot.len+sizeof(RID);
+        int len = slot.offset+slot.len+sizeof(RID)*slot.rid_num;
         auto dataLen = info[DATA_OFFSET]- len;
         auto infoLen = Slot_Size*(count-d);
 
