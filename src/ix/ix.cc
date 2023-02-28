@@ -325,26 +325,28 @@ namespace PeterDB {
                     Node::split(data, newPage, middleKey);
 
                     int newPageNum = ixFileHandle.getNumberOfPages();
+                    info[NEXT] = newPageNum;
+                    Tool::writeInfo(data, info);
+                    ixFileHandle.appendPage(newPage);
 
-                    keyEntry tmp;
-                    tmp.left = -1;
                     if(Tool::compare(child->key, middleKey, attr)<0){
-                        Node::insertEntry(ixFileHandle, pageNum, attr, *child, rid, &tmp);
+                        Node::insertKey(data, *child, attr);
                     } else {
-                        Node::insertEntry(ixFileHandle, newPageNum, attr, *child, rid, &tmp);
+                        Node::insertKey(newPage, *child, attr);
                     }
-
-
 
                     int* newInfo = new int [TREE_NODE_SIZE];
                     getInfo(newInfo, newPage);
+                    getInfo(info, data);
 
                     if(info[NODE_TYPE] == ROOT){
+                        int root_num = newPageNum+1;
+
                         char* root = new char [PAGE_SIZE];
                         Node::createNode(root, ROOT, NULL_NODE);
                         keyEntry entry1;
                         entry1.left = pageNum;
-                        entry1.right = newPageNum+1;
+                        entry1.right = newPageNum;
                         auto slot = Tool::getSlot(newPage, 0);
                         entry1.key = new char [slot.len];
                         memset(entry1.key, 0, slot.len);
@@ -352,26 +354,21 @@ namespace PeterDB {
                         Node::appendKey(root, entry1, attr);
 
                         ixFileHandle.appendPage(root);
-                        ixFileHandle.setRoot(newPageNum);
+                        ixFileHandle.setRoot(root_num);
                         info[NODE_TYPE] = NODE;
-                        info[PARENT] = newPageNum;
+                        info[PARENT] = root_num;
                         Tool::writeInfo(data, info);
 
-                        newInfo[PARENT] = newPageNum;
+                        newInfo[PARENT] = root_num;
                         Tool::writeInfo(newPage, newInfo);
-
-                        newPageNum++;
+                        ixFileHandle.writePage(newPageNum, newPage);
                         delete [] entry1.key;
                         delete [] root;
                     }
-                    getInfo(info, data);
+
                     child->left = pageNum;
                     child->key = middleKey;
                     child->right = newPageNum;
-
-                    info[NEXT] = newPageNum;
-                    Tool::writeInfo(data, info);
-                    ixFileHandle.appendPage(newPage);
 
                     delete [] newPage;
                     delete [] info;
@@ -650,7 +647,7 @@ namespace PeterDB {
         getInfo(newInfo, newData);
         Tool::updateInfo(newInfo, count-d-1, dataLen, infoLen+sizeof(int)*TREE_NODE_SIZE);
         Tool::writeInfo(newData, newInfo);
-        Tool::updateSlot(newData, newInfo, len, 0);
+        Tool::updateSlot(newData, newInfo, -len, 0);
     }
 
     int Node::searchPage(char *page, Attribute attribute, char *key) {
@@ -658,6 +655,9 @@ namespace PeterDB {
         Tool::search(page, attribute, key, pos, i, len);
         int num = 0;
         memcpy(&num, page+pos-sizeof(int), sizeof(int));
+        if(num==0){
+            std::cout<< std::endl;
+        }
         return num;
     }
 
