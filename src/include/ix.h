@@ -208,6 +208,8 @@ namespace PeterDB {
         static void print(IXFileHandle &ixFileHandle, const Attribute &attribute, int root, int i, std::ostream &out);
 
         static int searchPage(char *page, Attribute attribute, char *low);
+
+        static void insertKey(char *data, keyEntry entry, Attribute &attr);
     };
     // Leaf node
     class Leaf {
