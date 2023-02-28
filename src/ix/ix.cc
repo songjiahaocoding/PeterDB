@@ -3,6 +3,7 @@
 #include "src/include/ix.h"
 #include <cstring>
 #include <climits>
+#include <cmath>
 
 namespace PeterDB {
     IXFileHandle::IXFileHandle() {
@@ -581,7 +582,7 @@ namespace PeterDB {
         switch (attr.type) {
             case TypeInt:
             case TypeReal:
-                space+=4;
+                space+=sizeof(int);
                 break;
             case TypeVarChar:
                 int len = 0;
@@ -801,7 +802,7 @@ namespace PeterDB {
         switch (attr.type) {
             case TypeInt:
             case TypeReal:
-                space+=4;
+                space+=sizeof(int);
                 break;
             case TypeVarChar:
                 int len = 0;
@@ -920,7 +921,7 @@ namespace PeterDB {
             {
                 float floatVal1 = *(float*)key1;
                 float floatVal2 = *(float*)key2;
-                if((floatVal1-floatVal2)<FLOAT_DIFF)return 0;
+                if(fabs(floatVal1-floatVal2)<FLOAT_DIFF)return 0;
                 else return floatVal1-floatVal2;
             }
             case TypeVarChar:

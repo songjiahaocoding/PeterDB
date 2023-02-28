@@ -774,7 +774,7 @@ namespace PeterDB {
                 float condition = *(float *)conditionVal;
                 float val = *(float *)attrValue;
                 switch (commOp) {
-                    case EQ_OP: return (val-condition)<FLOAT_DIFF;
+                    case EQ_OP: return fabs(val-condition)<FLOAT_DIFF;
                     case LT_OP: return val < condition;
                     case LE_OP: return val <= condition;
                     case GT_OP: return val > condition;
