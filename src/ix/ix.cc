@@ -241,7 +241,7 @@ namespace PeterDB {
             Tool::search(page, attr, low, offset, id, len);
             Tool::getKey(page, offset, len, oldKey);
             diff = Tool::compare(low, oldKey, attr);
-
+            slotNum = id;
             //when the lowkey is not inclusive, scan until the value satisfy
             while (!lowInclusive && diff == 0){
                 moveToNext();
