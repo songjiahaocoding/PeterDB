@@ -375,7 +375,6 @@ namespace PeterDB {
                     delete [] newPage;
                     delete [] info;
                 }
-
             }
         }
         else {
@@ -675,8 +674,11 @@ namespace PeterDB {
             attrLen+=sizeof(int);
         }
         int dis = attrLen+sizeof(int);
+        if(entry.right==0){
+            std::cout<<std::endl;
+        }
 
-        memmove(data+pos+dis, data+pos, dis);
+        memmove(data+pos+dis, data+pos, info[DATA_OFFSET]-pos);
         memcpy(data+pos-sizeof(int), &entry.left, sizeof(int));
         memcpy(data+pos, entry.key, attrLen);
         memcpy(data+pos+attrLen, &entry.right, sizeof(int));
