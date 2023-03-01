@@ -324,6 +324,7 @@ namespace PeterDB {
                     char* middleKey = new char [PAGE_SIZE];
                     memset(middleKey, 0, PAGE_SIZE);
                     Node::split(data, newPage, middleKey);
+                    getInfo(info, data);
 
                     int newPageNum = ixFileHandle.getNumberOfPages();
                     info[NEXT] = newPageNum;
@@ -435,11 +436,11 @@ namespace PeterDB {
                 }
                 getInfo(info, data);
 
-                slot = Tool::getSlot(newPage, 0);
-                delete [] newKey;
-                newKey = new char [slot.len];
-                memset(newKey, 0, slot.len);
-                memcpy(newKey, newPage+slot.offset, slot.len);
+//                slot = Tool::getSlot(newPage, 0);
+//                delete [] newKey;
+//                newKey = new char [slot.len];
+//                memset(newKey, 0, slot.len);
+//                memcpy(newKey, newPage+slot.offset, slot.len);
 
                 child->left = pageNum;
                 child->key = newKey;
@@ -465,15 +466,11 @@ namespace PeterDB {
         if(Node::isNode(data) && ixFileHandle.getNumberOfPages() !=2){
             auto num = Node::searchPage(data, attr, entry.key);
             return deleteEntry(ixFileHandle, pageNum, num, attr, entry, rid,  child);
-            // No use of child because of the lazy delete
-//            keyEntry newEntry;
-//            newEntry.key = child->key;
-//            Node::removeKey(ixFileHandle, pageNum, newEntry, attr);
-//            ixFileHandle.writePage(pageNum, data);
         }
         else {
             auto rc = Leaf::deleteEntry(data, attr, entry, rid);
             if(rc!=0){
+                std::cout << " " << pageNum << std::endl;
                 delete [] data;
                 return rc;
             }
@@ -654,11 +651,15 @@ namespace PeterDB {
     int Node::searchPage(char *page, Attribute attribute, char *key) {
         int pos = 0, len = 0, i = 0;
         Tool::search(page, attribute, key, pos, i, len);
+        float diff = Tool::compare(key, page+pos, attribute);
+        if(diff==0){
+            pos+=len+sizeof(int);
+        }
         int num = 0;
         memcpy(&num, page+pos-sizeof(int), sizeof(int));
-        if(num==0){
-            std::cout<< std::endl;
-        }
+//        if(num==0){
+//            std::cout<< std::endl;
+//        }
         return num;
     }
 
@@ -880,20 +881,26 @@ namespace PeterDB {
         int pos = 0, len = 0, i = 0;
         Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, pos, i, len);
         float diff = Tool::compare(entry.key, leafData+pos, const_cast<Attribute &>(attr));
-        if(diff!=0)return -1;
+        if(diff!=0){
+            std::cout<< "Key not found in this page ";
+            return -1;
+        }
         auto slot = Tool::getSlot(leafData, i);
-        auto off = pos+len;
+        auto off = pos+len-sizeof(RID);
         RID r;
         bool found = false;
         for(int j = 0;j<slot.rid_num&&!found;j++){
-            found = equal(rid, leafData+off, 0);
             off+=sizeof (RID);
+            found = equal(rid, leafData+off, 0);
         }
-        if(!found)return -1;
+        if(!found){
+            std::cout<< "RID not found" << std::endl;
+            return -1;
+        }
         int* info = new int [TREE_NODE_SIZE];
         getInfo(info, leafData);
 
-        Tool::shiftEntry(leafData, i, off-sizeof(RID), sizeof(RID), info);
+        Tool::shiftEntry(leafData, i, off, sizeof(RID), info);
         Tool::writeSlot(leafData, slot.offset, slot.len, slot.rid_num-1, i);
         delete [] info;
         return 0;
@@ -1029,10 +1036,11 @@ namespace PeterDB {
     // To compact the page. Used for deletion
     void Tool::shiftEntry(char *data, int i, int pos, int len, int *info) {
         memset(data+pos, 0, len);
-        memmove(data+pos+len, data+pos, info[DATA_OFFSET]-pos-len);
+        memmove(data+pos, data+pos+len, info[DATA_OFFSET]-pos-len);
 
         updateSlot(data, info, -len,  i+1);
         info[DATA_OFFSET] -= len;
+        memset(data+info[DATA_OFFSET], 0, len);
         writeInfo(data, info);
     }
 
