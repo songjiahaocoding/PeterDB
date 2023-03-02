@@ -204,7 +204,7 @@ namespace PeterDB {
 
         fileHandle->readPage(pageNum, page);
         if(Node::isNode(page) && fileHandle->getNumberOfPages()!=2){
-            if (low == nullptr){
+            if (nullptr == this->low){
                 memcpy(&pageNum, page, sizeof(int));
             } else {
                 pageNum = Node::searchPage(page, attr, low);
@@ -261,7 +261,7 @@ namespace PeterDB {
     }
 
     void IX_ScanIterator::moveToNext() {
-        int* info = new int [TREE_NODE_SIZE];
+        auto info = new int [TREE_NODE_SIZE];
         ridNum++;
         Leaf::getInfo(info, page);
         while(ridNum >= curRIDNum && pageNum!=-1) {
@@ -434,12 +434,6 @@ namespace PeterDB {
                     delete [] root;
                 }
                 getInfo(info, data);
-
-//                slot = Tool::getSlot(newPage, 0);
-//                delete [] newKey;
-//                newKey = new char [slot.len];
-//                memset(newKey, 0, slot.len);
-//                memcpy(newKey, newPage+slot.offset, slot.len);
 
                 child->left = pageNum;
                 child->key = newKey;
@@ -656,9 +650,6 @@ namespace PeterDB {
         }
         int num = 0;
         memcpy(&num, page+pos-sizeof(int), sizeof(int));
-//        if(num==0){
-//            std::cout<< std::endl;
-//        }
         return num;
     }
 
@@ -946,18 +937,24 @@ namespace PeterDB {
                 memcpy(&len1, key1, sizeof(int));
                 memcpy(&len2, key2, sizeof(int));
 
-                char* val1 = new char [len1+1];
-                memset(val1, 0, len1+1);
-                char* val2 = new char [len2+1];
-                memset(val2, 0, len2+1);
+                std::string s1(key1+sizeof(int));
+                std::string s2(key2+sizeof(int));
 
-                memcpy(val1, key1+sizeof(int), len1);
-                memcpy(val2, key2+sizeof(int), len2);
-
-                auto res = strcmp(val1, val2);
-                delete [] val1;
-                delete [] val2;
-                return res;
+//                char* val1 = new char [len1+1];
+//                memset(val1, 0, len1+1);
+//                char* val2 = new char [len2+1];
+//                memset(val2, 0, len2+1);
+//
+//                memcpy(val1, key1+sizeof(int), len1);
+//                memcpy(val2, key2+sizeof(int), len2);
+//
+//                auto res = strcmp(val1, val2);
+//                delete [] val1;
+//                delete [] val2;
+//                return res;
+                if(s1<s2)return -1;
+                else if(s1>s2)return 1;
+                return 0;
             }
         }
         return 0;
