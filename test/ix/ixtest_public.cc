@@ -752,6 +752,9 @@ namespace PeterDBTesting {
             if (i == testedAscii) {
                 rids.emplace_back(rid);
             }
+            if(i==476){
+                std::cout<<std::endl;
+            }
         }
 
 
@@ -767,6 +770,8 @@ namespace PeterDBTesting {
             rids.emplace_back(rid);
 
         }
+
+        ix.scan(ixFileHandle, empNameAttr, nullptr, nullptr, true, true, ix_ScanIterator);
 
         // print BTree, by this time the BTree should have only one node
         std::stringstream stream;

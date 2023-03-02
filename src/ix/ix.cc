@@ -354,7 +354,9 @@ namespace PeterDB {
                         entry1.left = pageNum;
                         entry1.right = newPageNum;
                         int keyLen = 0;
-                        memcpy(&keyLen, middleKey, sizeof(int));
+                        if(attr.type==TypeVarChar){
+                            memcpy(&keyLen, middleKey, sizeof(int));
+                        }
                         keyLen+=sizeof(int);
                         entry1.key = new char [keyLen];
                         memset(entry1.key, 0, keyLen);
@@ -596,6 +598,9 @@ namespace PeterDB {
     void Node::appendKey(char* data, keyEntry &entry, Attribute &attr) {
         int* info = new int [TREE_NODE_SIZE];
         getInfo(info, data);
+        if(entry.left==-1||entry.right==-1){
+            std::cout<<std::endl;
+        }
 
         auto pos = data + info[DATA_OFFSET];
         int len = 4;
