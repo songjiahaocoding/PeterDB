@@ -159,6 +159,7 @@ namespace PeterDB {
     }
 
     infoPage::infoPage() {
+        info = new unsigned [INFO_NUM];
         for (int i = 0; i < INFO_NUM; ++i) {
             info[i] = 0;
         }
@@ -186,6 +187,8 @@ namespace PeterDB {
         fwrite(info, PAGE_SIZE, 1, file);
     }
 
-    infoPage::~infoPage() = default;
+    infoPage::~infoPage() {
+        delete [] info;
+    };
 } // namespace PeterDB
 

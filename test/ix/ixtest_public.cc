@@ -400,7 +400,7 @@ namespace PeterDBTesting {
                             << "page size should be increased.";
 
     }
-    // DEBUG: the order is the opposite to what's expected
+
     TEST_F(IX_Test, scan_by_LT_OP) {
         // Functions tested
         // 1. Insert entry
@@ -753,6 +753,8 @@ namespace PeterDBTesting {
                 rids.emplace_back(rid);
             }
         }
+
+
         // insert more entries
 
         for (unsigned i = 0; i < numOfMoreEntries; i++) {
@@ -763,6 +765,7 @@ namespace PeterDBTesting {
                                         << "indexManager::insertEntry() should succeed.";
 
             rids.emplace_back(rid);
+
         }
 
         // print BTree, by this time the BTree should have only one node
@@ -772,8 +775,8 @@ namespace PeterDBTesting {
 
         // we give a very loose D
         // (1+n)n/2 <= PAGE_SIZE, thus n >= 2^6.5 = 90.5, we would put very loose D as around 45.
-//        validateTree(stream, numOfEntries, numOfEntries + numOfMoreEntries, 2,
-//                     45, true);
+        validateTree(stream, numOfEntries, numOfEntries + numOfMoreEntries, 2,
+                     45, true);
 
         // collect counter
         ASSERT_EQ(ixFileHandle.collectCounterValues(rc, wc, ac), success)

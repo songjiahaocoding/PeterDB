@@ -156,6 +156,8 @@ namespace PeterDB {
         if (handle.fileHandle.file== nullptr) return -1;
         if (handle.getRoot()==-1)return -1;
         this->attr = attr;
+        this->low = nullptr;
+        this->high = nullptr;
 
         int strLength = 0;
         if (low != nullptr){
@@ -244,6 +246,8 @@ namespace PeterDB {
             Tool::getKey(page, offset, len, oldKey);
             diff = Tool::compare(low, oldKey, attr);
             slotNum = id;
+            slot = Tool::getSlot(page, slotNum);
+            curRIDNum = slot.rid_num;
             //when the lowkey is not inclusive, scan until the value satisfy
             while (!lowInclusive && diff == 0){
                 moveToNext();
@@ -283,7 +287,7 @@ namespace PeterDB {
     }
 
     bool IX_ScanIterator::inRange(char* key) {
-        if(high== nullptr)return true;
+        if(high==nullptr)return true;
 
         float diff = Tool::compare(key, high, attr);
 
@@ -349,10 +353,12 @@ namespace PeterDB {
                         keyEntry entry1;
                         entry1.left = pageNum;
                         entry1.right = newPageNum;
-                        auto slot = Tool::getSlot(newPage, 0);
-                        entry1.key = new char [slot.len];
-                        memset(entry1.key, 0, slot.len);
-                        memcpy(entry1.key, middleKey, slot.len);
+                        int keyLen = 0;
+                        memcpy(&keyLen, middleKey, sizeof(int));
+                        keyLen+=sizeof(int);
+                        entry1.key = new char [keyLen];
+                        memset(entry1.key, 0, keyLen);
+                        memcpy(entry1.key, middleKey, keyLen);
                         Node::appendKey(root, entry1, attr);
 
                         ixFileHandle.appendPage(root);
@@ -367,13 +373,14 @@ namespace PeterDB {
                         delete [] entry1.key;
                         delete [] root;
                     }
-
+                    delete [] child->key;
                     child->left = pageNum;
                     child->key = middleKey;
                     child->right = newPageNum;
 
                     delete [] newPage;
                     delete [] info;
+                    delete [] newInfo;
                 }
             }
         }
@@ -534,6 +541,7 @@ namespace PeterDB {
         if(child!=-1)children.push(child);
 
         delete [] data;
+        delete [] info;
         delete [] key;
         delete [] stringKey;
         out<<"],"<<std::endl;
@@ -561,6 +569,7 @@ namespace PeterDB {
         info[PARENT] = parent;
         info[NODE_TYPE] = type;
         Tool::writeInfo(data, info);
+        delete [] info;
     }
 
     bool Node::haveSpace(char *data, const char *key, Attribute& attr) {
@@ -580,6 +589,7 @@ namespace PeterDB {
                 break;
         }
         space += Slot_Size + sizeof(int);   // + the size of an index
+        delete [] info;
         return empty>=space;
     }
 
@@ -590,6 +600,7 @@ namespace PeterDB {
         auto pos = data + info[DATA_OFFSET];
         int len = 4;
         if(attr.type==TypeVarChar){
+            len = 0;
             memcpy(&len, entry.key, sizeof(int));
             len+=sizeof(int);
         }
@@ -639,6 +650,9 @@ namespace PeterDB {
         Tool::updateInfo(newInfo, count-d-1, dataLen, infoLen+sizeof(int)*TREE_NODE_SIZE);
         Tool::writeInfo(newData, newInfo);
         Tool::updateSlot(newData, newInfo, -len, 0);
+
+        delete [] info;
+        delete [] newInfo;
     }
 
     int Node::searchPage(char *page, Attribute attribute, char *key) {
@@ -682,6 +696,8 @@ namespace PeterDB {
         Tool::updateInfo(info, info[SLOT_NUM]+1, info[DATA_OFFSET]+dis, info[INFO_OFFSET]+Slot_Size);
         Tool::writeInfo(data, info);
         Tool::updateSlot(data, info, dis, i + 1);
+
+        delete [] info;
     }
 
     void Leaf::getInfo(int *info, char *leafData) {
@@ -736,6 +752,7 @@ namespace PeterDB {
         Tool::writeInfo(newData, newInfo);
         Tool::updateSlot(newData, newInfo, -len, 0);
         delete [] info;
+        delete [] newInfo;
     }
 
     void Leaf::print(char *data, const Attribute &attr, std::ostream &out) {
@@ -850,6 +867,7 @@ namespace PeterDB {
                 Tool::updateSlot(leafData, info, len + sizeof(RID), left + 1);
             }
             delete [] oldKey;
+            delete [] info;
             return;
         }
 
@@ -937,24 +955,18 @@ namespace PeterDB {
                 memcpy(&len1, key1, sizeof(int));
                 memcpy(&len2, key2, sizeof(int));
 
-                std::string s1(key1+sizeof(int));
-                std::string s2(key2+sizeof(int));
+                char* val1 = new char [len1+1];
+                memset(val1, 0, len1+1);
+                char* val2 = new char [len2+1];
+                memset(val2, 0, len2+1);
 
-//                char* val1 = new char [len1+1];
-//                memset(val1, 0, len1+1);
-//                char* val2 = new char [len2+1];
-//                memset(val2, 0, len2+1);
-//
-//                memcpy(val1, key1+sizeof(int), len1);
-//                memcpy(val2, key2+sizeof(int), len2);
-//
-//                auto res = strcmp(val1, val2);
-//                delete [] val1;
-//                delete [] val2;
-//                return res;
-                if(s1<s2)return -1;
-                else if(s1>s2)return 1;
-                return 0;
+                memcpy(val1, key1+sizeof(int), len1);
+                memcpy(val2, key2+sizeof(int), len2);
+
+                auto res = strcmp(val1, val2);
+                delete [] val1;
+                delete [] val2;
+                return res;
             }
         }
         return 0;

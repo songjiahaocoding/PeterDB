@@ -42,7 +42,7 @@ namespace PeterDB {
 
     class infoPage {
     public:
-        unsigned info[INFO_NUM];
+        unsigned* info;
 
         infoPage();
         ~infoPage();
