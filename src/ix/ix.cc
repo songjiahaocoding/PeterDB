@@ -339,6 +339,7 @@ namespace PeterDB {
                         Node::insertKey(data, *child, attr);
                     } else {
                         Node::insertKey(newPage, *child, attr);
+                        ixFileHandle.writePage(newPageNum, newPage);
                     }
 
                     int* newInfo = new int [TREE_NODE_SIZE];
@@ -897,6 +898,10 @@ namespace PeterDB {
         int pos = 0, len = 0, i = 0;
         Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, pos, i, len);
         float diff = Tool::compare(entry.key, leafData+pos, const_cast<Attribute &>(attr));
+        unsigned num = *(unsigned *)entry.key;
+        if(num>=630336){
+            std::cout<<std::endl;
+        }
         if(diff!=0){
             std::cout<< "Key not found in this page ";
             return -1;
