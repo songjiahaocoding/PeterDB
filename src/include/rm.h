@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-
+#include "src/include/ix.h"
 #include "src/include/rbfm.h"
 
 namespace PeterDB {
@@ -163,6 +163,10 @@ namespace PeterDB {
         void addTableCount();
 
         int getTableID(const std::string &tableName);
+
+        bool containAttribute(const std::string &tableName, const std::string &attrbuteName);
+
+        std::string getIndexName(const std::string &tableName, const std::string &attrName);
     };
 
 } // namespace PeterDB

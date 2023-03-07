@@ -342,11 +342,59 @@ namespace PeterDB {
 
     // QE IX related
     RC RelationManager::createIndex(const std::string &tableName, const std::string &attributeName){
-        return -1;
+        if(!containAttribute(tableName, attributeName)){
+            std::cout<< "No such attribute in "<< tableName << std::endl;
+            return -1;
+        }
+        std::string indexName = getIndexName(tableName, attributeName);
+        IndexManager& indexManager = IndexManager::instance();
+        indexManager.createFile(indexName);
+
+        IXFileHandle ixFileHandle;
+        indexManager.openFile(indexName, ixFileHandle);
+
+        RM_ScanIterator iter;
+        std::vector<Attribute> attrs;
+        getAttributes(tableName, attrs);
+        Attribute attribute;
+        for(int i = 0; i < attrs.size(); i++){
+            if(attrs[i].name == attributeName){
+                attribute = attrs[i];
+                break;
+            }
+        }
+        // TODO: Reflect existence in the catalog
+        std::vector<std::string> attrNames;
+        attrNames.push_back(attribute.name);
+        scan(tableName, "", NO_OP, NULL, attrNames, iter);
+
+        RID rid;
+        char* data = new char [PAGE_SIZE];
+        memset(data, 0, PAGE_SIZE);
+        char* key = new char [PAGE_SIZE];
+        while(iter.getNextTuple(rid, data) != RM_EOF){
+            memset(key, 0, PAGE_SIZE);
+            int keyLength = attribute.length + sizeof(int);
+            memcpy(key, data + sizeof(char), keyLength);
+            indexManager.insertEntry(ixFileHandle, attribute, key, rid);
+        }
+
+        delete [] data;
+        delete [] key;
+        indexManager.closeFile(ixFileHandle);
+        iter.close();
+        return 0;
     }
 
     RC RelationManager::destroyIndex(const std::string &tableName, const std::string &attributeName){
-        return -1;
+        if(!containAttribute(tableName, attributeName)){
+            std::cout<< "No such attribute in "<< tableName << std::endl;
+            return -1;
+        }
+        std::string indexName = getIndexName(tableName, attributeName);
+        IndexManager& indexManager = IndexManager::instance();
+        indexManager.destroyFile(indexName);
+        return 0;
     }
 
     // indexScan returns an iterator to allow the caller to go through qualified entries in index
@@ -462,5 +510,20 @@ namespace PeterDB {
         memcpy(&count, countData+1, sizeof(int));
         delete[] countData;
         return count;
+    }
+
+    bool RelationManager::containAttribute(const std::string &tableName, const std::string &attrbuteName) {
+        std::vector<Attribute> attrs;
+        getAttributes(tableName, attrs);
+        for(int i=0;i<attrs.size();i++){
+            if(attrs.at(i).name==attrbuteName){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    std::string RelationManager::getIndexName(const std::string &tableName, const std::string &attrName) {
+        return tableName + "_" + attrName + ".idx";;
     }
 } // namespace PeterDB
