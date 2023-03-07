@@ -53,6 +53,24 @@ namespace PeterDB {
                     (AttrLength) 4
             }
     };
+
+    const std::vector<Attribute> Index_Descriptor = {
+            {
+                    "table-id",
+                    TypeInt,
+                    (AttrLength)4
+            },
+            {
+                    "table-name",
+                    TypeVarChar,
+                    (AttrLength)50
+            },
+            {
+                    "attr-name",
+                    TypeVarChar,
+                    (AttrLength)50
+            }
+    };
     const std::vector<Attribute> Variables_Descriptor{
             {
                 "count",
@@ -92,6 +110,7 @@ namespace PeterDB {
 
     #define TABLES_TUPLE_SIZE 50*2+4*3+1
     #define COLUMNS_TUPLE_SIZE 50+4*5+1
+    #define INDEX_TUPLE_SIZE 50*2+4*3+1
     // Relation Manager
     class RelationManager {
     public:
@@ -167,6 +186,10 @@ namespace PeterDB {
         bool containAttribute(const std::string &tableName, const std::string &attrbuteName);
 
         std::string getIndexName(const std::string &tableName, const std::string &attrName);
+
+        std::string getIndexTableName(const std::string &tableName);
+
+        void buildIndexTuple(int id, const std::string &tableName, const std::string &attrName, char *tuple);
     };
 
 } // namespace PeterDB

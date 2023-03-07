@@ -138,8 +138,23 @@ namespace PeterDB {
         if(tableName=="Tables"||tableName=="Columns")return -1;
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
 
+        std::string indexTableName = getIndexTableName(tableName);
+        RBFM_ScanIterator iter;
+        FileHandle fileHandle;
+        if(rbfm.openFile(indexTableName, fileHandle)!=0)return -1;
+        auto id = getTableID(tableName);
+        rbfm.scan(fileHandle, Index_Descriptor, "table-id", EQ_OP, &id, {"attr-name"}, iter);
+        RID rid;
+        char* data = new char [INDEX_TUPLE_SIZE];
+        memset(data, 0, INDEX_TUPLE_SIZE);
 
-        if(rbfm.destroyFile(tableName)==0)return 0;
+
+        while(iter.getNextRecord(rid, data)!=-1){
+            std::string attrName(data+sizeof(int)+1);
+            rbfm.destroyFile(getIndexName(tableName, attrName));
+        }
+
+        if(rbfm.destroyFile(tableName)==0&&rbfm.destroyFile(indexTableName)==0)return 0;
         return -1;
     }
 
@@ -364,11 +379,23 @@ namespace PeterDB {
             }
         }
         // TODO: Reflect existence in the catalog
+        FileHandle handle;
+        std::string indexTableName = getIndexTableName(tableName);
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        if(rbfm.openFile(indexTableName, handle)!=0){
+            rbfm.createFile(indexTableName);
+            rbfm.openFile(indexTableName, handle);
+        }
+        RID rid;
+        char* indexTuple = new char [INDEX_TUPLE_SIZE];
+        memset(indexTuple, 0, INDEX_TUPLE_SIZE);
+        buildIndexTuple(getTableID(tableName), tableName, attributeName, indexTuple);
+        rbfm.insertRecord(handle, Index_Descriptor, indexTuple, rid);
+
         std::vector<std::string> attrNames;
         attrNames.push_back(attribute.name);
         scan(tableName, "", NO_OP, NULL, attrNames, iter);
 
-        RID rid;
         char* data = new char [PAGE_SIZE];
         memset(data, 0, PAGE_SIZE);
         char* key = new char [PAGE_SIZE];
@@ -385,7 +412,7 @@ namespace PeterDB {
         iter.close();
         return 0;
     }
-
+    // Deletion remaining work to do
     RC RelationManager::destroyIndex(const std::string &tableName, const std::string &attributeName){
         if(!containAttribute(tableName, attributeName)){
             std::cout<< "No such attribute in "<< tableName << std::endl;
@@ -394,6 +421,9 @@ namespace PeterDB {
         std::string indexName = getIndexName(tableName, attributeName);
         IndexManager& indexManager = IndexManager::instance();
         indexManager.destroyFile(indexName);
+
+        std::string indexTableName = getIndexTableName(tableName);
+        indexManager.destroyFile(indexTableName);
         return 0;
     }
 
@@ -446,6 +476,25 @@ namespace PeterDB {
         memcpy(ptr, &columnLength, sizeof(unsigned));
         ptr+=sizeof(unsigned);
         memcpy(ptr, &columnPos, sizeof(int));
+    }
+
+    void RelationManager::buildIndexTuple(int id, const std::string &tableName, const std::string &attrName, char *tuple) {
+        unsigned tableNameSize = tableName.size();
+        unsigned attrNameSize = attrName.size();
+        char nullpart = 0;
+        auto offset = 0;
+
+        memcpy(tuple+offset, &nullpart, 1);
+        offset+=1;
+        memcpy(tuple+offset, &id, sizeof(int));
+        offset+=sizeof(int);
+        memcpy(tuple+offset, &tableNameSize, sizeof(int));
+        offset+=sizeof(int);
+        memcpy(tuple+offset, tableName.c_str(), tableNameSize);
+        offset+=tableNameSize;
+        memcpy(tuple+offset, &attrNameSize, sizeof(int));
+        offset+=sizeof(int);
+        memcpy(tuple+offset, attrName.c_str(), attrNameSize);
     }
 
     int RelationManager::getTableID(const std::string &tableName){
@@ -525,5 +574,9 @@ namespace PeterDB {
 
     std::string RelationManager::getIndexName(const std::string &tableName, const std::string &attrName) {
         return tableName + "_" + attrName + ".idx";;
+    }
+
+    std::string RelationManager::getIndexTableName(const std::string &tableName) {
+        return tableName+"Indices";
     }
 } // namespace PeterDB
