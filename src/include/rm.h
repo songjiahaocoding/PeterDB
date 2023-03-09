@@ -190,6 +190,8 @@ namespace PeterDB {
         std::string getIndexTableName(const std::string &tableName);
 
         void buildIndexTuple(int id, const std::string &tableName, const std::string &attrName, char *tuple);
+
+        void insertIndex(const std::string &tableName, RID &rid);
     };
 
 } // namespace PeterDB

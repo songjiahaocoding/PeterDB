@@ -211,6 +211,7 @@ namespace PeterDB {
         getAttributes(tableName,attrs);
         if (rbfm.openFile(tableName, fileHandle) == 0) {
             rbfm.insertRecord(fileHandle, attrs, data, rid);
+            insertIndex(tableName, rid);
             fileHandle.closeFile();
             return 0;
         }
@@ -578,5 +579,47 @@ namespace PeterDB {
 
     std::string RelationManager::getIndexTableName(const std::string &tableName) {
         return tableName+"Indices";
+    }
+
+    void RelationManager::insertIndex(const std::string &tableName, RID &rid) {
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        IndexManager& indexManager = IndexManager::instance();
+
+        std::vector<Attribute> attrs;
+        getAttributes(tableName, attrs);
+        std::string indexTable = getIndexTableName(tableName);
+        RBFM_ScanIterator iter;
+        FileHandle fileHandle;
+        rbfm.openFile(indexTable, fileHandle);
+        auto id = getTableID(tableName);
+        rbfm.scan(fileHandle, Index_Descriptor, "table-id", EQ_OP, &id, {"attr-name"}, iter);
+        char* data = new char [INDEX_TUPLE_SIZE];
+        memset(data, 0, INDEX_TUPLE_SIZE);
+
+
+        while(iter.getNextRecord(rid, data)!=-1){
+            std::string attrName(data+sizeof(int)+1);
+            std::string indexName = getIndexName(tableName, attrName);
+            IXFileHandle ixFileHandle;
+            indexManager.openFile(indexName, ixFileHandle);
+
+            Attribute targetAttr;
+            for(auto attr : attrs) {
+                if(attr.name == attrName) {
+                    targetAttr = attr;
+                }
+            }
+            char* keyData = new char [targetAttr.length+sizeof(int)+1];
+            memset(keyData, 0, targetAttr.length+sizeof(int)+1);
+            readAttribute(tableName, rid, attrName, keyData);
+            char nullId = keyData[0];
+            if(nullId!=-128){
+                indexManager.insertEntry(ixFileHandle, targetAttr, keyData+1, rid);
+            }
+            delete [] keyData;
+        }
+
+        delete [] data;
+        iter.close();
     }
 } // namespace PeterDB
