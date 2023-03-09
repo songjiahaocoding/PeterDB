@@ -224,6 +224,7 @@ namespace PeterDB {
         std::vector<Attribute> attrs;
         getAttributes(tableName,attrs);
         if (rbfm.openFile(tableName, fileHandle) == 0) {
+            deleteIndex(tableName, const_cast<RID &>(rid));
             if(rbfm.deleteRecord(fileHandle, attrs, rid) != 0) {
                 fileHandle.closeFile();
                 return -1;
@@ -241,9 +242,11 @@ namespace PeterDB {
         getAttributes(tableName,attrs);
 
         if (rbfm.openFile(tableName, fileHandle) == 0) {
+            deleteIndex(tableName, const_cast<RID &>(rid));
             if(rbfm.updateRecord(fileHandle, attrs, data, rid) != 0) {
                 return -1;
             }
+            insertIndex(tableName, const_cast<RID &>(rid));
             fileHandle.closeFile();
             return 0;
         }
@@ -436,7 +439,21 @@ namespace PeterDB {
                  bool lowKeyInclusive,
                  bool highKeyInclusive,
                  RM_IndexScanIterator &rm_IndexScanIterator){
-        return -1;
+        std::vector<Attribute> attrs;
+        getAttributes(tableName, attrs);
+
+        Attribute targetAttr;
+        for(auto attr : attrs) {
+            if(attr.name == attributeName) {
+                targetAttr = attr;
+            }
+        }
+
+        IndexManager &indexManager = IndexManager::instance();
+        std::string indexFileName = getIndexName(tableName, attributeName);
+        indexManager.openFile(indexFileName, rm_IndexScanIterator.ixFileHandle);
+        indexManager.scan(rm_IndexScanIterator.ixFileHandle, targetAttr, lowKey, highKey, lowKeyInclusive, highKeyInclusive, rm_IndexScanIterator.iter);
+        return 0;
     }
 
     void RelationManager::buildTablesTuple(int id, std::string tableName, std::string fileName, char *tuple) {
@@ -528,11 +545,14 @@ namespace PeterDB {
     RM_IndexScanIterator::~RM_IndexScanIterator() = default;
 
     RC RM_IndexScanIterator::getNextEntry(RID &rid, void *key){
-        return -1;
+        if(iter.getNextEntry(rid, key) != 0) {
+            return RM_EOF;
+        }
+        return 0;
     }
 
     RC RM_IndexScanIterator::close(){
-        return -1;
+        return iter.close();
     }
 
     void RelationManager::addTableCount() {
@@ -615,6 +635,48 @@ namespace PeterDB {
             char nullId = keyData[0];
             if(nullId!=-128){
                 indexManager.insertEntry(ixFileHandle, targetAttr, keyData+1, rid);
+            }
+            delete [] keyData;
+        }
+
+        delete [] data;
+        iter.close();
+    }
+
+    void RelationManager::deleteIndex(const std::string &tableName, RID &rid) {
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        IndexManager& indexManager = IndexManager::instance();
+
+        std::vector<Attribute> attrs;
+        getAttributes(tableName, attrs);
+        std::string indexTable = getIndexTableName(tableName);
+        RBFM_ScanIterator iter;
+        FileHandle fileHandle;
+        rbfm.openFile(indexTable, fileHandle);
+        auto id = getTableID(tableName);
+        rbfm.scan(fileHandle, Index_Descriptor, "table-id", EQ_OP, &id, {"attr-name"}, iter);
+        char* data = new char [INDEX_TUPLE_SIZE];
+        memset(data, 0, INDEX_TUPLE_SIZE);
+
+
+        while(iter.getNextRecord(rid, data)!=-1){
+            std::string attrName(data+sizeof(int)+1);
+            std::string indexName = getIndexName(tableName, attrName);
+            IXFileHandle ixFileHandle;
+            indexManager.openFile(indexName, ixFileHandle);
+
+            Attribute targetAttr;
+            for(auto attr : attrs) {
+                if(attr.name == attrName) {
+                    targetAttr = attr;
+                }
+            }
+            char* keyData = new char [targetAttr.length+sizeof(int)+1];
+            memset(keyData, 0, targetAttr.length+sizeof(int)+1);
+            readAttribute(tableName, rid, attrName, keyData);
+            char nullId = keyData[0];
+            if(nullId!=-128){
+                indexManager.deleteEntry(ixFileHandle, targetAttr, keyData+1, rid);
             }
             delete [] keyData;
         }

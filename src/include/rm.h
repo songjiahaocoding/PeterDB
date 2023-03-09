@@ -106,6 +106,9 @@ namespace PeterDB {
         // "key" follows the same format as in IndexManager::insertEntry()
         RC getNextEntry(RID &rid, void *key);    // Get next matching entry
         RC close();                              // Terminate index scan
+
+        IX_ScanIterator iter;
+        IXFileHandle ixFileHandle;
     };
 
     #define TABLES_TUPLE_SIZE 50*2+4*3+1
@@ -192,6 +195,8 @@ namespace PeterDB {
         void buildIndexTuple(int id, const std::string &tableName, const std::string &attrName, char *tuple);
 
         void insertIndex(const std::string &tableName, RID &rid);
+
+        void deleteIndex(const std::string &tableName, RID &rid);
     };
 
 } // namespace PeterDB
