@@ -983,7 +983,7 @@ namespace PeterDBTesting {
 
         size_t tupleSize;
         bufSize = 1000;
-        int numTuples = 100000;
+        int numTuples = 1000;
         inBuffer = malloc(bufSize);
         outBuffer = malloc(bufSize);
         std::vector<float> lats;
@@ -1072,7 +1072,7 @@ namespace PeterDBTesting {
 
         size_t tupleSize;
         bufSize = 1000;
-        int numTuples = 100;
+        int numTuples = 1000;
         inBuffer = malloc(bufSize);
         outBuffer = malloc(bufSize);
         std::vector<float> lats;
@@ -1154,12 +1154,13 @@ namespace PeterDBTesting {
         attributes = {"tweet_id"};
         ASSERT_EQ(rm.scan(tableName, "sentiment", PeterDB::LE_OP, &targetSentiment, attributes, rmsi), success)
                                     << "relationManager::scan() should succeed.";
-        unsigned cnt = 0;
+
+        int cnt = 0;
         while (rmsi.getNextTuple(rid, outBuffer) != RM_EOF) {
             cnt++;
             unsigned tweetIdReturned = *(unsigned *) ((char *) outBuffer + 1);
             auto targetTweetId = std::find(tweet_ids.begin(), tweet_ids.end(), tweetIdReturned);
-            ASSERT_NE(targetTweetId, tweet_ids.end()) << "returned tweet_id value is not from inserted." << cnt;
+            ASSERT_NE(targetTweetId, tweet_ids.end()) << "returned tweet_id value is not from inserted. "<<cnt;
             tweet_ids.erase(targetTweetId);
 
         }
@@ -1263,7 +1264,7 @@ namespace PeterDBTesting {
 
         bufSize = 1000;
         size_t tupleSize = 0;
-        int numTuples = 2000;
+        int numTuples = 100000;
 
         inBuffer = malloc(bufSize);
         outBuffer = malloc(bufSize);

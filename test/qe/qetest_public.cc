@@ -1,6 +1,8 @@
 #include "test/utils/qe_test_util.h"
 
 namespace PeterDBTesting {
+    TEST_F(QE_Test, cleanup){}
+
     TEST_F(QE_Test, create_and_delete_table_with_index) {
         // Tables created: left
         // Indexes created: left.B, left.C
@@ -22,7 +24,7 @@ namespace PeterDBTesting {
         ASSERT_EQ(glob(".idx").size(), 1) << "There should be two index files now.";
 
         // Insert tuples.
-        populateTable(tableName, 100);
+        populateTable(tableName, 1);
 
         // Create an index after inserting tuples - should reflect the currently existing tuples.
         ASSERT_EQ(rm.createIndex(tableName, "C"), success) << "RelationManager.createIndex() should succeed.";

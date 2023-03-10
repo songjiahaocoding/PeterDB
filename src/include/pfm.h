@@ -42,7 +42,7 @@ namespace PeterDB {
 
     class infoPage {
     public:
-        unsigned info[INFO_NUM];
+        unsigned* info;
 
         infoPage();
         ~infoPage();
@@ -72,8 +72,13 @@ namespace PeterDB {
         bool handlingFile();
 
         RC closeFile();
-    private:
+
+        char* pageData;
         FILE *file;
+
+        void updateRoot(int rootNum);
+
+    private:
         PeterDB::infoPage* infoPage;
     };
 } // namespace PeterDB

@@ -210,6 +210,12 @@ namespace PeterDBTesting {
                 rid.slotNum = (unsigned) (value * salt * seed + seed) % SHRT_MAX;
                 rids.emplace_back(rid);
                 T key = fixedKey == 0 ? value : fixedKey;
+                if(key>630458){
+                    std::cout<<std::endl;
+                }
+                if(key>630458+113){
+                    std::cout<<std::endl;
+                }
                 ASSERT_EQ(ix.insertEntry(ixFileHandle, attr, &key, rid), success)
                                             << "indexManager::insertEntry() should succeed.";
             }

@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-
+#include "src/include/ix.h"
 #include "src/include/rbfm.h"
 
 namespace PeterDB {
@@ -53,6 +53,24 @@ namespace PeterDB {
                     (AttrLength) 4
             }
     };
+
+    const std::vector<Attribute> Index_Descriptor = {
+            {
+                    "table-id",
+                    TypeInt,
+                    (AttrLength)4
+            },
+            {
+                    "table-name",
+                    TypeVarChar,
+                    (AttrLength)50
+            },
+            {
+                    "attr-name",
+                    TypeVarChar,
+                    (AttrLength)50
+            }
+    };
     const std::vector<Attribute> Variables_Descriptor{
             {
                 "count",
@@ -73,6 +91,10 @@ namespace PeterDB {
         RC close();
 
         RBFM_ScanIterator rbfmScanIterator;
+
+        FileHandle fileHandle;
+
+        bool init = false;
     };
 
     // RM_IndexScanIterator is an iterator to go through index entries
@@ -84,10 +106,14 @@ namespace PeterDB {
         // "key" follows the same format as in IndexManager::insertEntry()
         RC getNextEntry(RID &rid, void *key);    // Get next matching entry
         RC close();                              // Terminate index scan
+
+        IX_ScanIterator iter;
+        IXFileHandle ixFileHandle;
     };
 
     #define TABLES_TUPLE_SIZE 50*2+4*3+1
     #define COLUMNS_TUPLE_SIZE 50+4*5+1
+    #define INDEX_TUPLE_SIZE 50*2+4*3+1
     // Relation Manager
     class RelationManager {
     public:
@@ -159,6 +185,18 @@ namespace PeterDB {
         void addTableCount();
 
         int getTableID(const std::string &tableName);
+
+        bool containAttribute(const std::string &tableName, const std::string &attrbuteName);
+
+        std::string getIndexName(const std::string &tableName, const std::string &attrName);
+
+        std::string getIndexTableName(const std::string &tableName);
+
+        void buildIndexTuple(int id, const std::string &tableName, const std::string &attrName, char *tuple);
+
+        void insertIndex(const std::string &tableName, RID &rid);
+
+        void deleteIndex(const std::string &tableName, RID &rid);
     };
 
 } // namespace PeterDB

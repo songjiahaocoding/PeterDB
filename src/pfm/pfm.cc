@@ -70,9 +70,11 @@ namespace PeterDB {
         writePageCounter = 0;
         appendPageCounter = 0;
         file = nullptr;
+        pageData = new char [PAGE_SIZE];
     }
 
     FileHandle::~FileHandle() {
+        delete [] pageData;
     };
 
     FileHandle &FileHandle::operator=(const FileHandle &) {
@@ -141,7 +143,7 @@ namespace PeterDB {
     }
 
     RC FileHandle::closeFile(){
-        if(file){
+        if(file != NULL && infoPage){
             infoPage->flushInfoPage(file);
             fclose(file);
             file = nullptr;
@@ -157,6 +159,7 @@ namespace PeterDB {
     }
 
     infoPage::infoPage() {
+        info = new unsigned [INFO_NUM];
         for (int i = 0; i < INFO_NUM; ++i) {
             info[i] = 0;
         }
@@ -184,6 +187,8 @@ namespace PeterDB {
         fwrite(info, PAGE_SIZE, 1, file);
     }
 
-    infoPage::~infoPage() = default;
+    infoPage::~infoPage() {
+        delete [] info;
+    };
 } // namespace PeterDB
 
