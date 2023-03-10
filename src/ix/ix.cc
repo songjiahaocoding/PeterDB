@@ -316,7 +316,6 @@ namespace PeterDB {
                 if(Node::haveSpace(data, entry.key, attr)){
                     Node::insertKey(data, *child, attr);
                     child->left = -1;
-                    delete [] child->key;
                 }
                 else {
                     char* newPage = new char [PAGE_SIZE];
@@ -376,12 +375,14 @@ namespace PeterDB {
                         delete [] entry1.key;
                         delete [] root;
                     }
-                    delete [] child->key;
                     child->left = pageNum;
-                    child->key = middleKey;
+                    child->key = new char [PAGE_SIZE];
+                    memset(child->key, 0, PAGE_SIZE);
+                    memcpy(child->key, middleKey, PAGE_SIZE);
                     child->right = newPageNum;
 
                     delete [] newPage;
+                    delete [] middleKey;
                     delete [] info;
                     delete [] newInfo;
                 }
@@ -455,6 +456,7 @@ namespace PeterDB {
 
                 delete [] newPage;
                 delete [] newInfo;
+                delete [] newKey;
                 delete [] info;
             }
         }
@@ -468,6 +470,7 @@ namespace PeterDB {
         ixFileHandle.readPage(pageNum, data);
         if(Node::isNode(data) && ixFileHandle.getNumberOfPages() !=2){
             auto num = Node::searchPage(data, attr, entry.key);
+            delete [] data;
             return deleteEntry(ixFileHandle, pageNum, num, attr, entry, rid,  child);
         }
         else {
@@ -899,9 +902,6 @@ namespace PeterDB {
         Tool::search(leafData, const_cast<Attribute &>(attr), entry.key, pos, i, len);
         float diff = Tool::compare(entry.key, leafData+pos, const_cast<Attribute &>(attr));
         unsigned num = *(unsigned *)entry.key;
-        if(num>=630336){
-            std::cout<<std::endl;
-        }
         if(diff!=0){
             std::cout<< "Key not found in this page ";
             return -1;
