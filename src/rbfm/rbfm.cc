@@ -713,6 +713,9 @@ namespace PeterDB {
 
         this->currentPageNum = 0;
         this->currentSlotNum = 0;
+        this->attrLength = 0;
+        this->attrType = TypeInt;
+        this->attributeIndex = 0;
 
         for (int i = 0; i < descriptor.size(); ++i) {
             if(!descriptor.at(i).name.compare(condition)){
@@ -820,5 +823,7 @@ namespace PeterDB {
                 return false;
         }
     }
+
+    RBFM_ScanIterator::~RBFM_ScanIterator() {}
 }// namespace PeterDB
 

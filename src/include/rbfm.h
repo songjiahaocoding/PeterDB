@@ -81,7 +81,7 @@ namespace PeterDB {
     public:
         RBFM_ScanIterator() = default;
 
-        ~RBFM_ScanIterator() = default;
+        ~RBFM_ScanIterator();
 
         // Never keep the results in the memory. When getNextRecord() is called,
         // a satisfying record needs to be fetched from the file.

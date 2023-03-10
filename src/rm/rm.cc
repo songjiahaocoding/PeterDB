@@ -154,8 +154,14 @@ namespace PeterDB {
             rbfm.destroyFile(getIndexName(tableName, attrName));
         }
 
-        if(rbfm.destroyFile(tableName)==0&&rbfm.destroyFile(indexTableName)==0)return 0;
-        return -1;
+        if(rbfm.destroyFile(tableName)!=0 || rbfm.destroyFile(indexTableName)!=0){
+            iter.close();
+            delete [] data;
+            return -1;
+        }
+        iter.close();
+        delete [] data;
+        return 0;
     }
 
     RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attribute> &attrs) {
@@ -412,6 +418,7 @@ namespace PeterDB {
 
         delete [] data;
         delete [] key;
+        delete [] indexTuple;
         indexManager.closeFile(ixFileHandle);
         iter.close();
         return 0;
