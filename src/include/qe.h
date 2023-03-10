@@ -170,6 +170,9 @@ namespace PeterDB {
 
         // For attribute in std::vector<Attribute>, name it as rel.attr
         RC getAttributes(std::vector<Attribute> &attrs) const override;
+
+        Iterator* iter;
+        Condition condition;
     };
 
     class Project : public Iterator {

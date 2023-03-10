@@ -565,10 +565,6 @@ namespace PeterDBTesting {
             rid.pageNum = (unsigned) (key * salt + seed) % INT_MAX;
             rid.slotNum = (unsigned) (key * salt * seed + seed) % SHRT_MAX;
 
-            if(i==16395){
-                std::cout<<key<<std::endl;
-            }
-
             ASSERT_EQ(ix.deleteEntry(ixFileHandle, ageAttr, &key, rid), success)
                                         << "indexManager::deleteEntry() should succeed. " << i;
 
@@ -772,7 +768,11 @@ namespace PeterDBTesting {
         }
 
         ix.scan(ixFileHandle, empNameAttr, nullptr, nullptr, true, true, ix_ScanIterator);
-
+        while(ix_ScanIterator.getNextEntry(rid, &key)==success){
+            if(rid.pageNum==319){
+                std::cout<< std::endl;
+            }
+        }
         // print BTree, by this time the BTree should have only one node
         std::stringstream stream;
         ASSERT_EQ(ix.printBTree(ixFileHandle, empNameAttr, stream), success)
