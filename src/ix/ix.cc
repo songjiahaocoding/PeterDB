@@ -89,7 +89,9 @@ namespace PeterDB {
         } else {
             keyEntry child;
             child.left = -1;
+            child.key = new char [PAGE_SIZE];
             Node::insertEntry(ixFileHandle, root, const_cast<Attribute &>(attribute), entry, const_cast<RID &>(rid), &child);
+            delete [] child.key;
         }
         return 0;
     }
@@ -376,7 +378,6 @@ namespace PeterDB {
                         delete [] root;
                     }
                     child->left = pageNum;
-                    child->key = new char [PAGE_SIZE];
                     memset(child->key, 0, PAGE_SIZE);
                     memcpy(child->key, middleKey, PAGE_SIZE);
                     child->right = newPageNum;
@@ -424,10 +425,10 @@ namespace PeterDB {
                     keyEntry entry1;
                     entry1.left = pageNum;
                     entry1.right = newPageNum+1;
-                    auto slot = Tool::getSlot(newPage, 0);
-                    entry1.key = new char [slot.len];
-                    memset(entry1.key, 0, slot.len);
-                    memcpy(entry1.key, newKey, slot.len);
+                    auto newSlot = Tool::getSlot(newPage, 0);
+                    entry1.key = new char [newSlot.len];
+                    memset(entry1.key, 0, newSlot.len);
+                    memcpy(entry1.key, newPage+newSlot.offset, newSlot.len);
                     Node::appendKey(root, entry1, attr);
 
                     ixFileHandle.appendPage(root);
@@ -447,7 +448,8 @@ namespace PeterDB {
                 getInfo(info, data);
 
                 child->left = pageNum;
-                child->key = newKey;
+                memset(child->key, 0, PAGE_SIZE);
+                memcpy(child->key, newKey, slot.len);
                 child->right = newPageNum;
 
                 info[NEXT] = newPageNum;

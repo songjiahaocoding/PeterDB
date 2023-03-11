@@ -367,9 +367,6 @@ namespace PeterDBTesting {
                     prepareRightVarCharTuple(nullsIndicator, i, inBuffer);
                 else if (tableName == "group")
                     prepareGroupTable(nullsIndicator, i, inBuffer);
-                if(i==505){
-                    std::cout<<std::endl;
-                }
                 ASSERT_EQ(rm.insertTuple(tableName, inBuffer, rid), success)
                                             << "relationManager.insertTuple() should succeed.";
                 rids.emplace_back(rid);

@@ -1,7 +1,10 @@
 #include "test/utils/qe_test_util.h"
 
 namespace PeterDBTesting {
-    TEST_F(QE_Test, cleanup){}
+    TEST_F(QE_Test, cleanup){
+//        tableNames.push_back("right");
+        tableNames.push_back("leftvarchar");
+    }
 
     TEST_F(QE_Test, create_and_delete_table_with_index) {
         // Tables created: left
@@ -184,6 +187,7 @@ namespace PeterDBTesting {
             std::stringstream stream;
             ASSERT_EQ(rm.printTuple(attrs, outBuffer, stream), success)
                                         << "RelationManager.printTuple() should succeed.";
+            std::cout<<stream.str()<< std::endl;
             printed.emplace_back(stream.str());
             memset(outBuffer, 0, bufSize);
         }

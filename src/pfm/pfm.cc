@@ -38,7 +38,7 @@ namespace PeterDB {
             }
         }
         fclose(file);
-        std::cout<< "File exsts" << std::endl;
+        std::cout<< "File "<< fileName<< " exists " << errno << std::endl;
         return -1;
     }
 

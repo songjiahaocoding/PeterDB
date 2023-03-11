@@ -28,7 +28,7 @@ namespace PeterDB {
         std::vector<Attribute> attrs;
         iter->getAttributes(attrs);
 
-        int pivot = ceil((double)attrs.size() / 8);
+        int pivot = std::ceil( static_cast<double>(attrs.size()) /CHAR_BIT);
         char* nullBytes = new char [pivot];
         memset(nullBytes, 0, pivot);
         memcpy(nullBytes, data, pivot);
@@ -113,7 +113,7 @@ namespace PeterDB {
             }
             case TypeVarChar:
             {
-                auto res = strcmp((char*)this->condition.rhsValue.data+4, key+4);
+                auto res = strcmp(key+4, (char*)this->condition.rhsValue.data+4);
                 switch (this->condition.op) {
                     case EQ_OP: return res==0;
                     case LT_OP: return res<0;

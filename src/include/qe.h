@@ -149,7 +149,7 @@ namespace PeterDB {
             for (Attribute &attribute : attributes) {
                 attribute.name = tableName + "." + attribute.name;
             }
-            return -1;
+            return 0;
         };
 
         ~IndexScan() override {
