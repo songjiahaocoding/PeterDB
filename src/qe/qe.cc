@@ -2,6 +2,7 @@
 #include <iostream>
 #include "src/include/qe.h"
 #include <cstring>
+#include <climits>
 
 namespace PeterDB {
     Filter::Filter(Iterator *input, const Condition &condition) {
@@ -64,8 +65,8 @@ namespace PeterDB {
             bool satisfy = isCompareSatisfy(key);
             int k;
             memcpy(&k, key, sizeof(int));
-            free(key);
-            free(nullBytes);
+            delete [] key;
+            delete [] nullBytes;
             return satisfy;
         }
 
@@ -113,7 +114,19 @@ namespace PeterDB {
             }
             case TypeVarChar:
             {
-                auto res = strcmp(key+4, (char*)this->condition.rhsValue.data+4);
+                unsigned keyLen = *(unsigned* )key;
+                unsigned condLen = *(unsigned *)this->condition.rhsValue.data;
+                char* keycmp = new char [keyLen+1];
+                char* condcmp = new char [condLen+1];
+                memcpy(keycmp, key+sizeof(int), keyLen);
+                memcpy(condcmp, (char*)this->condition.rhsValue.data+sizeof(int), condLen);
+                keycmp[keyLen] = '\0';
+                condcmp[condLen] = '\0';
+
+
+                auto res = strcmp(keycmp, condcmp);
+                delete [] keycmp;
+                delete [] condcmp;
                 switch (this->condition.op) {
                     case EQ_OP: return res==0;
                     case LT_OP: return res<0;

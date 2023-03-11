@@ -84,22 +84,22 @@ namespace PeterDB {
 
     // void pointer(void *data) which can be assigned to the point of any type
     RC FileHandle::readPage(PageNum pageNum, void *data) {
-        if(pageNum < infoPage->info[ACTIVE_PAGE_NUM]) {
+        if(pageNum < infoPage.info[ACTIVE_PAGE_NUM]) {
             // Offset the information page
             fseek(file, (pageNum+1)*PAGE_SIZE, SEEK_SET);
             fread(data, PAGE_SIZE, 1, file);
-            infoPage->info[READ_NUM]++;
+            infoPage.info[READ_NUM]++;
             return 0;
         }
         return -1;
     }
 
     RC FileHandle::writePage(PageNum pageNum, const void *data) {
-        if(pageNum < infoPage->info[ACTIVE_PAGE_NUM]){
+        if(pageNum < infoPage.info[ACTIVE_PAGE_NUM]){
             fseek(file, (pageNum+1)*PAGE_SIZE, SEEK_SET);
             fwrite(data, PAGE_SIZE, 1, file);
-            infoPage->info[WRITE_NUM]++;
-            infoPage->flushInfoPage(file);
+            infoPage.info[WRITE_NUM]++;
+            infoPage.flushInfoPage(file);
             return 0;
         }
         return -1;
@@ -108,22 +108,22 @@ namespace PeterDB {
     RC FileHandle::appendPage(const void *data) {
         fseek(file, 0, SEEK_END);
         fwrite(data, PAGE_SIZE, 1, file);
-        infoPage->info[ACTIVE_PAGE_NUM]++;
-        infoPage->info[APPEND_NUM]++;
-        infoPage->flushInfoPage(file);
+        infoPage.info[ACTIVE_PAGE_NUM]++;
+        infoPage.info[APPEND_NUM]++;
+        infoPage.flushInfoPage(file);
         return 0;
     }
 
     unsigned FileHandle::getNumberOfPages() {
-        infoPage->flushInfoPage(file);
-        return infoPage->info[ACTIVE_PAGE_NUM];
+        infoPage.flushInfoPage(file);
+        return infoPage.info[ACTIVE_PAGE_NUM];
     }
 
     RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
-        infoPage->flushInfoPage(file);
-        readPageCount = infoPage->info[READ_NUM];
-        writePageCount = infoPage->info[WRITE_NUM];
-        appendPageCount = infoPage->info[APPEND_NUM];
+        infoPage.flushInfoPage(file);
+        readPageCount = infoPage.info[READ_NUM];
+        writePageCount = infoPage.info[WRITE_NUM];
+        appendPageCount = infoPage.info[APPEND_NUM];
         return 0;
     }
 
@@ -137,15 +137,15 @@ namespace PeterDB {
             std::cout << "Error cannot open the file " << fileName << " " << errno << std::endl;
             return -1;
         } else {
-            infoPage = new class infoPage();
-            infoPage -> readInfoPage(file);
+//            infoPage = new class infoPage();
+            infoPage.readInfoPage(file);
         }
         return 0;
     }
 
     RC FileHandle::closeFile(){
-        if(file != NULL && infoPage){
-            infoPage->flushInfoPage(file);
+        if(file != NULL){
+            infoPage.flushInfoPage(file);
             fclose(file);
             file = nullptr;
         }

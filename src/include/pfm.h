@@ -79,7 +79,7 @@ namespace PeterDB {
         void updateRoot(int rootNum);
 
     private:
-        PeterDB::infoPage* infoPage;
+        PeterDB::infoPage infoPage;
     };
 } // namespace PeterDB
 
