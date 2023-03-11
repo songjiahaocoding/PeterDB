@@ -620,8 +620,8 @@ namespace PeterDB {
         char* data = new char [INDEX_TUPLE_SIZE];
         memset(data, 0, INDEX_TUPLE_SIZE);
 
-
-        while(iter.getNextRecord(rid, data)!=-1){
+        RID scanRID;
+        while(iter.getNextRecord(scanRID, data)!=-1){
             std::string attrName(data+sizeof(int)+1);
             std::string indexName = getIndexName(tableName, attrName);
             IXFileHandle ixFileHandle;
