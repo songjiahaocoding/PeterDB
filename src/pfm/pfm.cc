@@ -38,6 +38,7 @@ namespace PeterDB {
             }
         }
         fclose(file);
+        std::cout<< "File exsts" << std::endl;
         return -1;
     }
 

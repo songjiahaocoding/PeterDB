@@ -108,6 +108,7 @@ namespace PeterDB {
         if(rbfm.createFile(tableName)!=0){
             rbfm.closeFile(tablesHandle);
             rbfm.closeFile(columnHandle);
+            std::cout<< "Create file " << tableName <<" Failed" << std::endl;
             return -1;
         }
 
@@ -153,12 +154,8 @@ namespace PeterDB {
             std::string attrName(data+sizeof(int)+1);
             rbfm.destroyFile(getIndexName(tableName, attrName));
         }
-
-        if(rbfm.destroyFile(tableName)!=0 || rbfm.destroyFile(indexTableName)!=0){
-            iter.close();
-            delete [] data;
-            return -1;
-        }
+        rbfm.destroyFile(tableName);
+        rbfm.destroyFile(indexTableName);
         iter.close();
         delete [] data;
         return 0;
