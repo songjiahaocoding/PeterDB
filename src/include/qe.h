@@ -173,6 +173,12 @@ namespace PeterDB {
 
         Iterator* iter;
         Condition condition;
+
+        bool isMatch(char *data);
+
+        bool isNull(int i, char *data);
+
+        bool isCompareSatisfy(char *key);
     };
 
     class Project : public Iterator {

@@ -24,7 +24,7 @@ namespace PeterDBTesting {
         ASSERT_EQ(glob(".idx").size(), 1) << "There should be two index files now.";
 
         // Insert tuples.
-        populateTable(tableName, 1);
+        populateTable(tableName, 100);
 
         // Create an index after inserting tuples - should reflect the currently existing tuples.
         ASSERT_EQ(rm.createIndex(tableName, "C"), success) << "RelationManager.createIndex() should succeed.";

@@ -643,6 +643,7 @@ namespace PeterDB {
             if(nullId!=-128){
                 indexManager.insertEntry(ixFileHandle, targetAttr, keyData+1, rid);
             }
+            indexManager.closeFile(ixFileHandle);
             delete [] keyData;
         }
 
