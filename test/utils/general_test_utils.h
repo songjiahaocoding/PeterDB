@@ -149,7 +149,7 @@ namespace PeterDBTesting {
     void checkPrintRecord(const std::string &expected, const std::string &target, bool containsMode = false,
                           const std::vector<std::string> &ignoreValues = std::vector<std::string>(),
                           const bool caseInsensitive = false) {
-        GTEST_LOG_(INFO) << "Target string: " << target;
+        //GTEST_LOG_(INFO) << "Target string: " << target;
         if (std::strcmp(normalizeKVString(expected).c_str(), target.c_str()) == 0)
             return;
 
@@ -178,14 +178,14 @@ namespace PeterDBTesting {
                 if (isFloat(targetValue)) {
                     ASSERT_FLOAT_EQ(std::stof(targetValue), std::stof(expectedValue))
                                                 << "Field (" << expectedKey
-                                                << ") value should be equal, float values are checked in a range.";
+                                                << ") value should be equal, float values are checked in a range. "<< target << " "<<expected;
                 } else {
                     if (caseInsensitive) {
                         targetValue = to_lower(targetValue);
                         expectedValue = to_lower(expectedValue);
                     }
                     ASSERT_EQ(targetValue, expectedValue)
-                                                << "Field (" << expectedKey << ") value should be equal.";
+                                                << "Field (" << expectedKey << ") value should be equal. "<< target << " "<<expected;
                 }
             }
         }

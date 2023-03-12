@@ -159,12 +159,12 @@ namespace PeterDB {
         int pivot = std::ceil( static_cast<double>(attrs.size()) /CHAR_BIT);
         char* nullBytes = new char [pivot];
         memset(nullBytes, 0, pivot);
-        memcpy(nullBytes, data, pivot);
+        memcpy(nullBytes, tuple, pivot);
 
         int namePivot = std::ceil( static_cast<double>(attrNames.size()) /CHAR_BIT);
         char* nameNullBytes = new char [namePivot];
         memset(nameNullBytes, 0, namePivot);
-        memcpy(nameNullBytes, data, namePivot);
+        memcpy(nameNullBytes, tuple, namePivot);
         for (int i = 0; i < attrs.size(); ++i) {
             auto it = std::find(attrNames.begin(), attrNames.end(), attrs[i].name);
             int dis = std::distance(attrNames.begin(), it);
