@@ -103,9 +103,9 @@ namespace PeterDB {
         FileHandle tablesHandle;
         FileHandle columnHandle;
         RID rid;
-
+        std::string indexName = getIndexTableName(tableName);
         if(rbfm.openFile("Tables", tablesHandle)!=0 || rbfm.openFile("Columns", columnHandle))return -1;
-        if(rbfm.createFile(tableName)!=0){
+        if(rbfm.createFile(tableName)!=0||rbfm.createFile(indexName)!=0){
             rbfm.closeFile(tablesHandle);
             rbfm.closeFile(columnHandle);
             std::cout<< "Create file " << tableName <<" Failed" << std::endl;
@@ -142,13 +142,14 @@ namespace PeterDB {
         std::string indexTableName = getIndexTableName(tableName);
         RBFM_ScanIterator iter;
         FileHandle fileHandle;
-        if(rbfm.openFile(indexTableName, fileHandle)!=0)return -1;
+        if(rbfm.openFile(indexTableName, fileHandle)!=0){
+            return -1;
+        }
         auto id = getTableID(tableName);
         rbfm.scan(fileHandle, Index_Descriptor, "table-id", EQ_OP, &id, {"attr-name"}, iter);
         RID rid;
         char* data = new char [INDEX_TUPLE_SIZE];
         memset(data, 0, INDEX_TUPLE_SIZE);
-
 
         while(iter.getNextRecord(rid, data)!=-1){
             std::string attrName(data+sizeof(int)+1);
@@ -602,7 +603,7 @@ namespace PeterDB {
     }
 
     std::string RelationManager::getIndexTableName(const std::string &tableName) {
-        return tableName+"Indices";
+        return tableName+"Indices.idx";
     }
 
     void RelationManager::insertIndex(const std::string &tableName, RID &rid) {
@@ -614,7 +615,8 @@ namespace PeterDB {
         std::string indexTable = getIndexTableName(tableName);
         RBFM_ScanIterator iter;
         FileHandle fileHandle;
-        rbfm.openFile(indexTable, fileHandle);
+        RC rc = rbfm.openFile(indexTable, fileHandle);
+        if(rc!=0)return;
         auto id = getTableID(tableName);
         rbfm.scan(fileHandle, Index_Descriptor, "table-id", EQ_OP, &id, {"attr-name"}, iter);
         char* data = new char [INDEX_TUPLE_SIZE];

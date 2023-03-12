@@ -134,7 +134,7 @@ namespace PeterDB {
         }
         file = fopen(fileName.c_str(), "r+b");
         if(!handlingFile()){
-            std::cout << "Error cannot open the file " << fileName << " " << errno << std::endl;
+//            std::cout << "Error cannot open the file " << fileName << " " << errno << std::endl;
             return -1;
         } else {
 //            infoPage = new class infoPage();

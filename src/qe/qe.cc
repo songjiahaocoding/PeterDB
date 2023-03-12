@@ -154,7 +154,7 @@ namespace PeterDB {
             delete [] tuple;
             return -1;
         }
-
+        ProjectAttr* proAttrs = new ProjectAttr [attrNames.size()];
         int pivot = std::ceil( static_cast<double>(attrs.size()) /CHAR_BIT);
         char* nullBytes = new char [pivot];
         memset(nullBytes, 0, pivot);
@@ -164,36 +164,36 @@ namespace PeterDB {
         char* nameNullBytes = new char [namePivot];
         memset(nameNullBytes, 0, namePivot);
         memcpy(nameNullBytes, data, namePivot);
-        int index = 0;
         for (int i = 0; i < attrs.size(); ++i) {
+            auto it = std::find(attrNames.begin(), attrNames.end(), attrs[i].name);
+            int dis = std::distance(attrNames.begin(), it);
             if(Tool::isNull(i, nullBytes)){
-                if(attrNames[index] == attrs[i].name){
-                    ++index;
-                    Tool::setNull(index, nullBytes);
+                if(it!=attrNames.end()){
+                    Tool::setNull(dis, nameNullBytes);
                 }
                 continue;
             }
-            if(attrs[i].name == attrNames[index]){
-                if(attrs[i].type == TypeVarChar){
-                    int strLength;
-                    memcpy(&strLength, tuple + pivot, sizeof(int));
-                    memcpy((char*)data + namePivot, tuple + pivot, sizeof(int) + strLength);
-                    namePivot += (strLength + sizeof(int));
-                }
-                else{
-                    memcpy((char*)data + namePivot, tuple + pivot, sizeof(int));
-                    namePivot += sizeof(int);
-                }
-                ++index;
+            if(it!=attrNames.end()){
+                proAttrs[dis] = {attrs[i], (unsigned)pivot};
             }
+
+            int len = sizeof(int);
             if(attrs[i].type == TypeVarChar){
-                int strLength;
-                memcpy(&strLength, tuple + pivot, sizeof(int));
-                pivot += (strLength + sizeof(int));
+                memcpy(&len, tuple + pivot, sizeof(int));
+                len += sizeof(int);
             }
-            else{
-                pivot += sizeof(int);
+            pivot += len;
+        }
+
+        for(int i=0;i<attrNames.size();i++){
+            auto item = proAttrs[i];
+            int len = sizeof(int);
+            if(item.attr.type==TypeVarChar){
+                memcpy(&len, tuple+item.pos, sizeof(int));
+                len+=sizeof(int);
             }
+            memcpy((char*)data+namePivot, tuple+item.pos, len);
+            namePivot+=len;
         }
 
         memcpy(data, nameNullBytes, std::ceil( static_cast<double>(attrNames.size()) /CHAR_BIT));
@@ -204,6 +204,7 @@ namespace PeterDB {
     }
 
     RC Project::getAttributes(std::vector<Attribute> &attrs) const {
+        attrs.clear();
         std::vector<Attribute> temp;
         iter->getAttributes(temp);
         for (std::string s : this->attrNames){

@@ -33,6 +33,11 @@ namespace PeterDB {
         Value rhsValue;             // right-hand side value if bRhsIsAttr = FALSE
     } Condition;
 
+    typedef struct ProjectAttr{
+        Attribute attr;
+        unsigned pos;
+    };
+
     class Iterator {
         // All the relational operators and access methods are iterators.
     public:
