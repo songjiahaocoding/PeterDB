@@ -198,6 +198,7 @@ namespace PeterDB {
         }
 
         memcpy(data, nameNullBytes, std::ceil( static_cast<double>(attrNames.size()) /CHAR_BIT));
+        delete [] proAttrs;
         delete [] tuple;
         delete [] nullBytes;
         delete [] nameNullBytes;
