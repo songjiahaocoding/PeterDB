@@ -177,6 +177,20 @@ namespace PeterDB {
         static void shiftEntry(char *data, int i, int pos, int len, int *info);
 
         static void writeInfo(char *data, int *info);
+
+        static bool isNull(int i, char* data) {
+            int bytePosition = i / 8;
+            int bitPosition = i % 8;
+            char b = data[bytePosition];
+            return ((b >> (7 - bitPosition)) & 0x1);
+        }
+
+        static void setNull(int i, char* data){
+            int byteNum = (double)i / 8;
+            int bitNum = i % 8;
+            char mask = 0x01 << (7 - bitNum);
+            data[byteNum] |= mask;
+        }
     };
 
     enum {

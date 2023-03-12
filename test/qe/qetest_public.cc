@@ -2,7 +2,7 @@
 
 namespace PeterDBTesting {
     TEST_F(QE_Test, cleanup){
-//        tableNames.push_back("right");
+        tableNames.push_back("right");
 //        tableNames.push_back("leftvarchar");
     }
 

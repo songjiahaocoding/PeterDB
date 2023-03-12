@@ -37,7 +37,7 @@ namespace PeterDB {
 
         if(condition.bRhsIsAttr == false){
             for(int i = 0 ; i < attrs.size(); i++){
-                if(isNull(i, nullBytes))
+                if(Tool::isNull(i, nullBytes))
                     continue;
                 if(attrs[i].name == condition.lhsAttr) {
                     break;
@@ -71,13 +71,6 @@ namespace PeterDB {
         }
 
         return false;
-    }
-
-    bool Filter::isNull(int i, char *data) {
-        int bytePosition = i / 8;
-        int bitPosition = i % 8;
-        char b = data[bytePosition];
-        return ((b >> (7 - bitPosition)) & 0x1);
     }
 
     bool Filter::isCompareSatisfy(char *key) {
@@ -144,7 +137,9 @@ namespace PeterDB {
     }
 
     Project::Project(Iterator *input, const std::vector<std::string> &attrNames) {
-
+        iter = input;
+        this->attrNames = attrNames;
+        iter->getAttributes(attrs);
     }
 
     Project::~Project() {
@@ -152,11 +147,74 @@ namespace PeterDB {
     }
 
     RC Project::getNextTuple(void *data) {
-        return -1;
+        char* tuple = new char [PAGE_SIZE];
+        memset(tuple, 0, PAGE_SIZE);
+        auto rc = iter->getNextTuple(tuple);
+        if(rc==-1){
+            delete [] tuple;
+            return -1;
+        }
+
+        int pivot = std::ceil( static_cast<double>(attrs.size()) /CHAR_BIT);
+        char* nullBytes = new char [pivot];
+        memset(nullBytes, 0, pivot);
+        memcpy(nullBytes, data, pivot);
+
+        int namePivot = std::ceil( static_cast<double>(attrNames.size()) /CHAR_BIT);
+        char* nameNullBytes = new char [namePivot];
+        memset(nameNullBytes, 0, namePivot);
+        memcpy(nameNullBytes, data, namePivot);
+        int index = 0;
+        for (int i = 0; i < attrs.size(); ++i) {
+            if(Tool::isNull(i, nullBytes)){
+                if(attrNames[index] == attrs[i].name){
+                    ++index;
+                    Tool::setNull(index, nullBytes);
+                }
+                continue;
+            }
+            if(attrs[i].name == attrNames[index]){
+                if(attrs[i].type == TypeVarChar){
+                    int strLength;
+                    memcpy(&strLength, tuple + pivot, sizeof(int));
+                    memcpy((char*)data + namePivot, tuple + pivot, sizeof(int) + strLength);
+                    namePivot += (strLength + sizeof(int));
+                }
+                else{
+                    memcpy((char*)data + namePivot, tuple + pivot, sizeof(int));
+                    namePivot += sizeof(int);
+                }
+                ++index;
+            }
+            if(attrs[i].type == TypeVarChar){
+                int strLength;
+                memcpy(&strLength, tuple + pivot, sizeof(int));
+                pivot += (strLength + sizeof(int));
+            }
+            else{
+                pivot += sizeof(int);
+            }
+        }
+
+        memcpy(data, nameNullBytes, std::ceil( static_cast<double>(attrNames.size()) /CHAR_BIT));
+        delete [] tuple;
+        delete [] nullBytes;
+        delete [] nameNullBytes;
+        return 0;
     }
 
     RC Project::getAttributes(std::vector<Attribute> &attrs) const {
-        return -1;
+        std::vector<Attribute> temp;
+        iter->getAttributes(temp);
+        for (std::string s : this->attrNames){
+            for(Attribute attr : temp){
+                if (attr.name == s){
+                    attrs.push_back(attr);
+                    break;
+                }
+            }
+        }
+        return 0;
     }
 
     BNLJoin::BNLJoin(Iterator *leftIn, TableScan *rightIn, const Condition &condition, const unsigned int numPages) {

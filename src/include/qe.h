@@ -176,8 +176,6 @@ namespace PeterDB {
 
         bool isMatch(char *data);
 
-        bool isNull(int i, char *data);
-
         bool isCompareSatisfy(char *key);
     };
 
@@ -192,6 +190,10 @@ namespace PeterDB {
 
         // For attribute in std::vector<Attribute>, name it as rel.attr
         RC getAttributes(std::vector<Attribute> &attrs) const override;
+
+        Iterator* iter;
+        std::vector<std::string> attrNames;
+        std::vector<Attribute> attrs;
     };
 
     class BNLJoin : public Iterator {
