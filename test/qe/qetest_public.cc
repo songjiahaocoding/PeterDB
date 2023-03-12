@@ -5,7 +5,10 @@ namespace PeterDBTesting {
 //        tableNames.push_back("right");
 //        tableNames.push_back("leftvarchar");
         PeterDB::RecordBasedFileManager& rbfm = PeterDB::RecordBasedFileManager::instance();
-        rbfm.destroyFile("right");
+        rbfm.destroyFile("left");
+        rbfm.destroyFile("leftIndices");
+        rbfm.destroyFile("left_B.idx");
+        rbfm.destroyFile("left_C.idx");
     }
 
     TEST_F(QE_Test, create_and_delete_table_with_index) {
