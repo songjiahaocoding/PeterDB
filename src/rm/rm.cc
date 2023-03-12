@@ -599,11 +599,11 @@ namespace PeterDB {
     }
 
     std::string RelationManager::getIndexName(const std::string &tableName, const std::string &attrName) {
-        return tableName + "_" + attrName + ".idx";;
+        return tableName + "_" + attrName + ".idx";
     }
 
     std::string RelationManager::getIndexTableName(const std::string &tableName) {
-        return tableName+"Indices.idx";
+        return tableName+"Indices";
     }
 
     void RelationManager::insertIndex(const std::string &tableName, RID &rid) {
