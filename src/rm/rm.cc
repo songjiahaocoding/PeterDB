@@ -140,18 +140,15 @@ namespace PeterDB {
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
 
         std::string indexTableName = getIndexTableName(tableName);
-        RBFM_ScanIterator iter;
+        RM_ScanIterator iter;
         FileHandle fileHandle;
-        if(rbfm.openFile(indexTableName, fileHandle)!=0){
-            return -1;
-        }
         auto id = getTableID(tableName);
-        rbfm.scan(fileHandle, Index_Descriptor, "table-id", EQ_OP, &id, {"attr-name"}, iter);
+        if(scan(indexTableName, "table-id", EQ_OP, &id, {"attr-name"}, iter)!=0)return -1;
         RID rid;
         char* data = new char [INDEX_TUPLE_SIZE];
         memset(data, 0, INDEX_TUPLE_SIZE);
 
-        while(iter.getNextRecord(rid, data)!=-1){
+        while(iter.getNextTuple(rid, data)!=-1){
             std::string attrName(data+sizeof(int)+1);
             rbfm.destroyFile(getIndexName(tableName, attrName));
         }
