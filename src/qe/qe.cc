@@ -3,6 +3,7 @@
 #include "src/include/qe.h"
 #include <cstring>
 #include <climits>
+#include <algorithm>
 
 namespace PeterDB {
     Filter::Filter(Iterator *input, const Condition &condition) {
