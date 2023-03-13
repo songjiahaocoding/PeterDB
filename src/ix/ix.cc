@@ -246,6 +246,9 @@ namespace PeterDB {
             int id = 0, offset = 0, len = 0;
             Tool::search(page, attr, low, offset, id, len);
             Tool::getKey(page, offset, len, oldKey);
+            if(id==-1){
+                pageNum = -1;
+            }
             diff = Tool::compare(low, oldKey, attr);
             slotNum = id;
             slot = Tool::getSlot(page, slotNum);
@@ -1074,6 +1077,53 @@ namespace PeterDB {
             memcpy(base-offset, &info[i], sizeof(int));
             offset += sizeof(int);
         }
+    }
+
+    void Tool::buildNullBytes(std::vector<Attribute> attrs, char* tuple, int offset, char* nullIndicator){
+        for(int i = 0; i < attrs.size(); i++) {
+            uint8_t nullIndicatorBuffer = 0;
+            int byteOffset = (offset + i) / CHAR_BIT;
+            int bitOffset = (offset + i) % CHAR_BIT;
+            memcpy(&nullIndicatorBuffer, nullIndicator + byteOffset, sizeof(uint8_t));
+
+            if(Tool::isNull(i, tuple)) {
+                nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset - 1);
+                nullIndicatorBuffer = nullIndicatorBuffer | 1;
+                nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset - 1);
+                memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
+            }
+            else {
+                nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset);
+                nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset);
+                memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
+            }
+        }
+    }
+
+    void Tool::mergeTwoTuple(std::vector<Attribute> attr1, char *tuple1, int size1, std::vector<Attribute> attr2,
+                                char *tuple2, int size2, void *data) {
+        int leftNullIndicatorSize = ceil(attr1.size() / 8.0);
+        int rightNullIndicatorSize = ceil(attr2.size() / 8.0);
+        int totalNullIndicatorSize = ceil((attr1.size() + attr2.size()) / 8.0);
+
+        char* nullIndicator = new char [totalNullIndicatorSize];
+        memset(nullIndicator, 0, totalNullIndicatorSize);
+
+        buildNullBytes(attr1, tuple1, 0, nullIndicator);
+        buildNullBytes(attr2, tuple2, attr1.size(), nullIndicator);
+
+        unsigned mergedTupleSize = totalNullIndicatorSize + size1 + size2-leftNullIndicatorSize-rightNullIndicatorSize;
+
+        unsigned offset = 0;
+        memset(data, 0, mergedTupleSize);
+
+        memcpy((char*)data + offset, nullIndicator, totalNullIndicatorSize);
+        offset += totalNullIndicatorSize;
+
+        memcpy((char*)data + offset, tuple1 + leftNullIndicatorSize, size1-leftNullIndicatorSize);
+        offset += size1-leftNullIndicatorSize;
+
+        memcpy((char*)data + offset, tuple2 + rightNullIndicatorSize, size2-rightNullIndicatorSize);
     }
 
     keyEntry::keyEntry(int left, char *key, int right) {

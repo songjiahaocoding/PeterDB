@@ -191,6 +191,11 @@ namespace PeterDB {
             char mask = 0x01 << (7 - bitNum);
             data[byteNum] |= mask;
         }
+
+        static void buildNullBytes(std::vector<Attribute> attrs, char *tuple, int offset, char *nullIndicator);
+
+        static void mergeTwoTuple(std::vector<Attribute> attr1, char *tuple1, int size1, std::vector<Attribute> attr2, char *tuple2,
+                      int size2, void *data);
     };
 
     enum {

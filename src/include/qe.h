@@ -33,7 +33,7 @@ namespace PeterDB {
         Value rhsValue;             // right-hand side value if bRhsIsAttr = FALSE
     } Condition;
 
-    typedef struct ProjectAttr{
+    struct ProjectAttr{
         Attribute attr;
         unsigned pos;
     };
@@ -188,7 +188,7 @@ namespace PeterDB {
         // A wrapper inheriting Iterator over IX_IndexScan
     private:
         RelationManager &rm;
-        RM_IndexScanIterator iter;
+        RM_IndexScanIterator* iter;
         std::string tableName;
         std::string attrName;
         std::vector<Attribute> attrs;
@@ -205,7 +205,8 @@ namespace PeterDB {
             rm.getAttributes(tableName, attrs);
 
             // Call rm indexScan to get iterator
-            rm.indexScan(tableName, attrName, NULL, NULL, true, true, iter);
+            iter = new RM_IndexScanIterator();
+            rm.indexScan(tableName, attrName, NULL, NULL, true, true, *this->iter);
 
             // Set alias
             if (alias) this->tableName = alias;
@@ -213,12 +214,14 @@ namespace PeterDB {
 
         // Start a new iterator given the new key range
         void setIterator(void *lowKey, void *highKey, bool lowKeyInclusive, bool highKeyInclusive) {
-            iter.close();
-            rm.indexScan(tableName, attrName, lowKey, highKey, lowKeyInclusive, highKeyInclusive, iter);
+            iter->close();
+            delete iter;
+            iter = new RM_IndexScanIterator();
+            rm.indexScan(tableName, attrName, lowKey, highKey, lowKeyInclusive, highKeyInclusive, *this->iter);
         };
 
         RC getNextTuple(void *data) override {
-            RC rc = iter.getNextEntry(rid, key);
+            RC rc = iter->getNextEntry(rid, key);
             if (rc == 0) {
                 rc = rm.readTuple(tableName, rid, data);
             }
@@ -229,7 +232,6 @@ namespace PeterDB {
             attributes.clear();
             attributes = this->attrs;
 
-
             // For attribute in std::vector<Attribute>, name it as rel.attr
             for (Attribute &attribute : attributes) {
                 attribute.name = tableName + "." + attribute.name;
@@ -238,7 +240,7 @@ namespace PeterDB {
         };
 
         ~IndexScan() override {
-            iter.close();
+            iter->close();
         };
     };
 
@@ -310,11 +312,6 @@ namespace PeterDB {
 
         std::map<Key, std::vector<Record>> map;
         std::vector<std::pair<Record, Record>> tupleBuffer;
-
-        void mergeTwoTuple(std::vector<Attribute> attr1, char *tuple1,int size1,
-                           std::vector<Attribute> attr2, char *tuple2,int size2, void *data);
-
-        void buildNullBytes(std::vector<Attribute> attrs, char *tuple, int offset, char *nullIndicator);
     };
 
     class INLJoin : public Iterator {
@@ -331,6 +328,15 @@ namespace PeterDB {
 
         // For attribute in std::vector<Attribute>, name it as rel.attr
         RC getAttributes(std::vector<Attribute> &attrs) const override;
+
+        Iterator* leftIter;
+        IndexScan* rightIter;
+        Condition condition;
+        char* leftData;
+        char* rightData;
+        std::vector<Attribute> leftAttrs;
+        std::vector<Attribute> rightAttrs;
+        bool firstScan;
     };
 
     // 10 extra-credit points
