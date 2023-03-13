@@ -357,7 +357,7 @@ namespace PeterDB {
         buildNullBytes(attr1, tuple1, 0, nullIndicator);
         buildNullBytes(attr2, tuple2, attr1.size(), nullIndicator);
 
-        unsigned mergedTupleSize = totalNullIndicatorSize + size1 + size2;
+        unsigned mergedTupleSize = totalNullIndicatorSize + size1 + size2-leftNullIndicatorSize-rightNullIndicatorSize;
 
         unsigned offset = 0;
         memset(data, 0, mergedTupleSize);
