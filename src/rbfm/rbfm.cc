@@ -561,14 +561,18 @@ namespace PeterDB {
             switch (attrs.at(id).type) {
                 case TypeInt:
                 case TypeReal:
+                {
                     memcpy((char*)data+1, attrPos, sizeof(float));
-                    break;
+                    return;
+                }
                 case TypeVarChar:
+                {
                     int size = 0;
                     memcpy(&size, attrPos, sizeof(int));
                     memcpy((char*)data+1, &size, sizeof(int));
                     memcpy((char*)data+1+sizeof(int), attrPos+sizeof(int), size);
-                    break;
+                    return;
+                }
             }
         }
         char null = -128;

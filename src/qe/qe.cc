@@ -307,6 +307,7 @@ namespace PeterDB {
                         }
                     }
                 }
+                delete [] attrData;
             }
         }
 
@@ -322,6 +323,7 @@ namespace PeterDB {
         for(auto &attr : this->leftAttrs) {
             attrs.push_back(attr);
         }
+        return 0;
     }
 
     void BNLJoin::buildNullBytes(std::vector<Attribute> attrs, char* tuple, int offset, char* nullIndicator){
