@@ -246,6 +246,8 @@ namespace PeterDB {
                 auto pair = tupleBuffer.back();
                 char* tuple1 = new char [pair.first.getSize()];
                 char* tuple2 = new char [pair.second.getSize()];
+                memset(tuple1, 0, pair.first.getSize());
+                memset(tuple2, 0, pair.second.getSize());
                 pair.first.getData(leftAttrs, tuple1);
                 pair.second.getData(rightAttrs, tuple2);
                 mergeTwoTuple(leftAttrs, tuple1, pair.first.getSize(), rightAttrs, tuple2, pair.second.getSize(), data);
@@ -310,18 +312,20 @@ namespace PeterDB {
                 }
                 delete [] attrData;
             }
+            this->map.clear();
+            this->mapSize = 0;
+            this->rightIter->setIterator();
         }
-
     }
 
     RC BNLJoin::getAttributes(std::vector<Attribute> &attrs) const {
         attrs.clear();
 
-        for(auto &attr : this->rightAttrs) {
+        for(auto &attr : this->leftAttrs) {
             attrs.push_back(attr);
         }
 
-        for(auto &attr : this->leftAttrs) {
+        for(auto &attr : this->rightAttrs) {
             attrs.push_back(attr);
         }
         return 0;
@@ -369,7 +373,7 @@ namespace PeterDB {
         offset += totalNullIndicatorSize;
 
         memcpy((char*)data + offset, tuple1 + leftNullIndicatorSize, size1-leftNullIndicatorSize);
-        offset += size1;
+        offset += size1-leftNullIndicatorSize;
 
         memcpy((char*)data + offset, tuple2 + rightNullIndicatorSize, size2-rightNullIndicatorSize);
     }
