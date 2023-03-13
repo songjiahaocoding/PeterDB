@@ -295,6 +295,7 @@ namespace PeterDBTesting {
             std::stringstream stream;
             ASSERT_EQ(rm.printTuple(attrs, outBuffer, stream), success)
                                         << "RelationManager.printTuple() should succeed.";
+            std::cout<<stream.str()<<std::endl;
             printed.emplace_back(stream.str());
             memset(outBuffer, 0, bufSize);
         }

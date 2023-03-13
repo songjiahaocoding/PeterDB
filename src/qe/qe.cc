@@ -270,8 +270,8 @@ namespace PeterDB {
                                 break;
                             }
                         }
-                        Key key(attrData+1, targetAttr.type);
-                        map[key].push_back(record);
+                        Key* key = new Key(attrData+1, targetAttr.type);
+                        map[*key].push_back(record);
                         mapSize += record.getSize();
                     }
                     delete[] attrData;
@@ -302,8 +302,9 @@ namespace PeterDB {
                     }
                     Key key(attrData+1, targetAttr.type);
                     if(map.find(key) != map.end()) {
-                        for(auto r : map[key]) {
-                            tupleBuffer.push_back({r, rightRecord});
+                        for(int i=0;i<map[key].size();i++){
+                            auto pair = new std::pair<Record, Record>(map[key][i], rightRecord);
+                            tupleBuffer.push_back(*pair);
                         }
                     }
                 }
@@ -367,10 +368,10 @@ namespace PeterDB {
         memcpy((char*)data + offset, nullIndicator, totalNullIndicatorSize);
         offset += totalNullIndicatorSize;
 
-        memcpy((char*)data + offset, tuple1 + leftNullIndicatorSize, size1);
+        memcpy((char*)data + offset, tuple1 + leftNullIndicatorSize, size1-leftNullIndicatorSize);
         offset += size1;
 
-        memcpy((char*)data + offset, tuple2 + rightNullIndicatorSize, size2);
+        memcpy((char*)data + offset, tuple2 + rightNullIndicatorSize, size2-rightNullIndicatorSize);
     }
 
     INLJoin::INLJoin(Iterator *leftIn, IndexScan *rightIn, const Condition &condition) {

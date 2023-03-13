@@ -478,8 +478,9 @@ namespace PeterDB {
     }
 
     Record::~Record() {
-        delete [] data;
-        delete [] index;
+        this->size = 0;
+//        delete [] data;
+//        delete [] index;
     }
 
     bool Record::isNull(int fieldNum) {
