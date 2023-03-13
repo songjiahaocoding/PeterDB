@@ -383,6 +383,14 @@ namespace PeterDB {
         // E.g. Relation=rel, attribute=attr, aggregateOp=MAX
         // output attrName = "MAX(rel.attr)"
         RC getAttributes(std::vector<Attribute> &attrs) const override;
+
+        Iterator* iter;
+        Attribute aggAttr;
+        std::vector<Attribute> attributes;
+        int count = 0;
+        float num = 0;
+        AggregateOp op;
+        bool done;
     };
 
 

@@ -423,22 +423,122 @@ namespace PeterDB {
     }
 
     Aggregate::Aggregate(Iterator *input, const Attribute &aggAttr, AggregateOp op) {
-
+        this->iter = input;
+        this->aggAttr = aggAttr;
+        this->op = op;
+        this->done = false;
+        this->count = 0;
+        this->num = 0;
     }
 
     Aggregate::Aggregate(Iterator *input, const Attribute &aggAttr, const Attribute &groupAttr, AggregateOp op) {
 
     }
 
-    Aggregate::~Aggregate() {
-
-    }
+    Aggregate::~Aggregate() {}
 
     RC Aggregate::getNextTuple(void *data) {
-        return -1;
+        if (this->done) return QE_EOF;
+
+        char* tuple = new char [PAGE_SIZE];
+        char* key = new char [PAGE_SIZE];
+        float floatNum = 0;
+        int intNum = 0;
+        std::vector<Attribute> attrs;
+        iter->getAttributes(attrs);
+        memset(tuple, 0, PAGE_SIZE);
+        
+        while(iter->getNextTuple(tuple) != QE_EOF){
+            this->count++;
+            RID rid;
+            Record record(attrs, tuple, rid);
+            record.getAttribute(this->aggAttr.name, attrs, key);
+            char nullIndicator = key[0];
+            if(nullIndicator==-128)continue;
+            memcpy(&intNum, key+1, sizeof(int));
+            memcpy(&floatNum, key+1, sizeof(float));
+
+            switch (this->op) {
+                case MIN:
+                    if(this->aggAttr.type==TypeInt)this->num = std::min(this->num, (float)intNum);
+                    else this->num = std::min(this->num, floatNum);
+                    break;
+                case MAX:
+                    if(this->aggAttr.type==TypeInt)this->num = std::max(this->num, (float)intNum);
+                    else this->num = std::max(this->num, floatNum);
+                    break;
+                case AVG:
+                case SUM:
+                    if(this->aggAttr.type==TypeInt)this->num += intNum;
+                    else this->num += floatNum;
+                    break;
+            }
+        }
+
+        char nullIndicator = 0;
+        if(this->count==0){
+            nullIndicator = -128;
+        }
+        memcpy(data, &nullIndicator, sizeof(char));
+
+        switch(op){
+            // Use this.num to store all intermediate result
+            case MAX:
+            case MIN:
+            case SUM:
+                if(this->aggAttr.type==TypeInt) {
+                    int res = this->num;
+                    memcpy((char*)data + sizeof(char), &res, sizeof(int));
+                }
+                else memcpy((char*)data + sizeof(char), &this->num, sizeof(float));
+                break;
+            case COUNT:
+                // COUNT returns float as the requirement said
+            {
+                float res = this->count;
+                memcpy((char*)data + sizeof(char), &res, sizeof(float));
+                break;
+            }
+            case AVG:
+            {
+                float avg = (this->count == 0 ? 0 : this->num / this->count);
+                memcpy((char*)data + sizeof(char), &avg, sizeof(float));
+                break;
+            }
+        }
+
+        this->done = true;
+        delete [] tuple;
+        delete [] key;
+        return 0;
     }
 
     RC Aggregate::getAttributes(std::vector<Attribute> &attrs) const {
-        return -1;
+        attrs.clear();
+        std::string name;
+        switch(this->op){
+            case MIN:
+                name = "MIN";
+                break;
+            case MAX:
+                name = "MAX";
+                break;
+            case COUNT:
+                name = "COUNT";
+                break;
+            case SUM:
+                name = "SUM";
+                break;
+            case AVG:
+                name = "AVG";
+                break;
+        }
+        std::string attrName = name + "(" + this->aggAttr.name + ")";
+        Attribute attr;
+        attr.name = attrName;
+        attr.type = this->aggAttr.type;
+        attr.length = this->aggAttr.length;
+        attrs.push_back(attr);
+        return 0;
     }
 } // namespace PeterDB
