@@ -48,6 +48,86 @@ namespace PeterDB {
         virtual ~Iterator() = default;
     };
 
+    class Key {
+    public:
+        char* data;
+        AttrType type;
+        unsigned len;
+        Key() = default;
+        Key(char* ptr, AttrType type){
+            this->type = type;
+            this->len = sizeof(int);
+            if(type==TypeVarChar){
+                memcpy(&this->len, ptr, sizeof(int));
+                this->len+=sizeof(int);
+            }
+            data = new char [len];
+            memcpy(data, ptr, len);
+        }
+
+        ~Key(){
+            delete [] data;
+        }
+
+
+        bool operator < (const Key &k) const {
+            switch (type) {
+                case TypeInt:
+                {
+                    int int1 = *(int*)data;
+                    int int2 = *(int*)k.data;
+                    return int1<int2;
+                }
+                case TypeReal:
+                {
+                    float ft1 = *(float*)data;
+                    float ft2 = *(float*)k.data;
+                    return ft1<ft2;
+                }
+                case TypeVarChar:
+                {
+                    std::string s1(data+4);
+                    std::string s2(k.data+4);
+                    return s1<s2;
+                }
+            }
+        }
+
+        bool operator == (const Key &k) const {
+            switch (type) {
+                case TypeInt:
+                {
+                    int int1 = *(int*)data;
+                    int int2 = *(int*)k.data;
+                    return int1==int2;
+                }
+                case TypeReal:
+                {
+                    float ft1 = *(float*)data;
+                    float ft2 = *(float*)k.data;
+                    return ft1==ft2;
+                }
+                case TypeVarChar:
+                {
+                    std::string s1(data+4);
+                    std::string s2(k.data+4);
+                    return s1==s2;
+                }
+            }
+        }
+
+        void operator = (const Key &k){
+            this->len = k.len;
+            int tmp = sizeof(int);
+            if(k.type==TypeVarChar){
+                tmp+=k.len;
+            }
+            this->data = new char [tmp];
+            memcpy(this->data, k.data, tmp);
+            this->type = k.type;
+        }
+    };
+
     class TableScan : public Iterator {
         // A wrapper inheriting Iterator over RM_ScanIterator
     private:
@@ -217,6 +297,24 @@ namespace PeterDB {
 
         // For attribute in std::vector<Attribute>, name it as rel.attr
         RC getAttributes(std::vector<Attribute> &attrs) const override;
+
+        Iterator* leftIter;
+        TableScan* rightIter;
+        Condition condition;
+        unsigned pageNum;
+        unsigned mapSize;
+        char* leftData;
+        char* rightData;
+        std::vector<Attribute> leftAttrs;
+        std::vector<Attribute> rightAttrs;
+
+        std::map<Key, std::vector<Record>> map;
+        std::vector<std::pair<Record, Record>> tupleBuffer;
+
+        void mergeTwoTuple(std::vector<Attribute> attr1, char *tuple1,int size1,
+                           std::vector<Attribute> attr2, char *tuple2,int size2, void *data);
+
+        void buildNullBytes(std::vector<Attribute> attrs, char *tuple, int offset, char *nullIndicator);
     };
 
     class INLJoin : public Iterator {
@@ -280,6 +378,8 @@ namespace PeterDB {
         // output attrName = "MAX(rel.attr)"
         RC getAttributes(std::vector<Attribute> &attrs) const override;
     };
+
+
 } // namespace PeterDB
 
 #endif // _qe_h_

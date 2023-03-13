@@ -542,6 +542,39 @@ namespace PeterDB {
         memcpy(data + recordOffset, (char*)value+flag_size, totalSize);
     }
 
+    void Record::getData(std::vector<Attribute> &descriptor, char* data) {
+        short int flag_size = std::ceil( static_cast<double>(descriptor.size()) /CHAR_BIT);
+        auto offset = FIELD_NUM_SIZE+flag_size+INDEX_SIZE*this->fieldNum;
+        memcpy(data, this->data+FIELD_NUM_SIZE, flag_size);
+        memcpy(data+flag_size, this->data+offset, size-offset);
+    }
+
+    void Record::getAttribute(std::string attrName, std::vector<Attribute> attrs, char *data) {
+        int id=0;
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        for(;id<attrs.size();id++){
+            if(attrs[id].name==attrName)break;
+        }
+        if(!isNull(id)){
+            int offset = rbfm.getAttrPos(attrs, this->data, id);
+            auto attrPos = this->data+offset;
+            switch (attrs.at(id).type) {
+                case TypeInt:
+                case TypeReal:
+                    memcpy((char*)data+1, attrPos, sizeof(float));
+                    break;
+                case TypeVarChar:
+                    int size = 0;
+                    memcpy(&size, attrPos, sizeof(int));
+                    memcpy((char*)data+1, &size, sizeof(int));
+                    memcpy((char*)data+1+sizeof(int), attrPos+sizeof(int), size);
+                    break;
+            }
+        }
+        char null = -128;
+        memcpy(data, &null, sizeof(char));
+    }
+
     tombStone::tombStone(unsigned int pageNum, unsigned short slotNum) {
         this->pageNum = pageNum;
         this->slotNum = slotNum;

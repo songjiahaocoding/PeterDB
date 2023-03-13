@@ -221,19 +221,154 @@ namespace PeterDB {
     }
 
     BNLJoin::BNLJoin(Iterator *leftIn, TableScan *rightIn, const Condition &condition, const unsigned int numPages) {
+        this->leftIter = leftIn;
+        this->rightIter = rightIn;
+        this->condition = condition;
+        this->pageNum = numPages;
+        this->mapSize = 0;
 
+        this->leftIter->getAttributes(this->leftAttrs);
+        this->rightIter->getAttributes(this->rightAttrs);
+
+        this->leftData = new char [PAGE_SIZE];
+        this->rightData = new char [PAGE_SIZE];
     }
 
     BNLJoin::~BNLJoin() {
-
+        delete [] this->leftData;
+        delete [] this->rightData;
     }
 
     RC BNLJoin::getNextTuple(void *data) {
-        return -1;
+        RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
+        while(true) {
+            if(tupleBuffer.size() != 0) {
+                auto pair = tupleBuffer.back();
+                char* tuple1 = new char [pair.first.getSize()];
+                char* tuple2 = new char [pair.second.getSize()];
+                pair.first.getData(leftAttrs, tuple1);
+                pair.second.getData(rightAttrs, tuple2);
+                mergeTwoTuple(leftAttrs, tuple1, pair.first.getSize(), rightAttrs, tuple2, pair.second.getSize(), data);
+                tupleBuffer.pop_back();
+                return 0;
+            }
+
+            while(mapSize < pageNum * PAGE_SIZE) {
+                if(leftIter->getNextTuple(leftData) != QE_EOF) {
+                    RID rid{0, 0};
+                    Record record(leftAttrs, leftData, rid);
+
+                    char* attrData = new char [PAGE_SIZE];
+                    memset(attrData, 0, PAGE_SIZE);
+                    record.getAttribute(condition.lhsAttr, leftAttrs, attrData);
+                    char nullIndicator = attrData[0];
+                    if(nullIndicator!=-128) {
+                        Attribute targetAttr;
+                        for(auto attr:leftAttrs){
+                            if(attr.name==condition.lhsAttr){
+                                targetAttr=attr;
+                                break;
+                            }
+                        }
+                        Key key(attrData+1, targetAttr.type);
+                        map[key].push_back(record);
+                        mapSize += record.getSize();
+                    }
+                    delete[] attrData;
+                }
+                else if(mapSize == 0) {
+                    return QE_EOF;
+                }
+                else {
+                    break;
+                }
+            }
+
+            while(rightIter->getNextTuple(rightData) != QE_EOF) {
+                RID rid{0,0};
+                Record rightRecord(rightAttrs, rightData, rid);
+
+                char* attrData = new char [PAGE_SIZE];
+                memset(attrData, 0, PAGE_SIZE);
+                rightRecord.getAttribute(condition.rhsAttr, rightAttrs, attrData);
+                char nullIndicator = attrData[0];
+                if(nullIndicator!=-128) {
+                    Attribute targetAttr;
+                    for(auto attr:leftAttrs){
+                        if(attr.name==condition.lhsAttr){
+                            targetAttr=attr;
+                            break;
+                        }
+                    }
+                    Key key(attrData+1, targetAttr.type);
+                    if(map.find(key) != map.end()) {
+                        for(auto r : map[key]) {
+                            tupleBuffer.push_back({r, rightRecord});
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
     RC BNLJoin::getAttributes(std::vector<Attribute> &attrs) const {
-        return -1;
+        attrs.clear();
+
+        for(auto &attr : this->rightAttrs) {
+            attrs.push_back(attr);
+        }
+
+        for(auto &attr : this->leftAttrs) {
+            attrs.push_back(attr);
+        }
+    }
+
+    void BNLJoin::buildNullBytes(std::vector<Attribute> attrs, char* tuple, int offset, char* nullIndicator){
+        for(int i = 0; i < attrs.size(); i++) {
+            uint8_t nullIndicatorBuffer = 0;
+            int byteOffset = (offset + i) / CHAR_BIT;
+            int bitOffset = (offset + i) % CHAR_BIT;
+            memcpy(&nullIndicatorBuffer, nullIndicator + byteOffset, sizeof(uint8_t));
+
+            if(Tool::isNull(i, tuple)) {
+                nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset - 1);
+                nullIndicatorBuffer = nullIndicatorBuffer | 1;
+                nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset - 1);
+                memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
+            }
+            else {
+                nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset);
+                nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset);
+                memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
+            }
+        }
+    }
+
+    void BNLJoin::mergeTwoTuple(std::vector<Attribute> attr1, char *tuple1, int size1, std::vector<Attribute> attr2,
+                                char *tuple2, int size2, void *data) {
+        int leftNullIndicatorSize = ceil(attr1.size() / 8.0);
+        int rightNullIndicatorSize = ceil(attr2.size() / 8.0);
+        int totalNullIndicatorSize = ceil((attr1.size() + attr2.size()) / 8.0);
+
+        char* nullIndicator = new char [totalNullIndicatorSize];
+        memset(nullIndicator, 0, totalNullIndicatorSize);
+
+        buildNullBytes(attr1, tuple1, 0, nullIndicator);
+        buildNullBytes(attr2, tuple2, attr1.size(), nullIndicator);
+
+        unsigned mergedTupleSize = totalNullIndicatorSize + size1 + size2;
+
+        unsigned offset = 0;
+        memset(data, 0, mergedTupleSize);
+
+        memcpy((char*)data + offset, nullIndicator, totalNullIndicatorSize);
+        offset += totalNullIndicatorSize;
+
+        memcpy((char*)data + offset, tuple1 + leftNullIndicatorSize, size1);
+        offset += size1;
+
+        memcpy((char*)data + offset, tuple2 + rightNullIndicatorSize, size2);
     }
 
     INLJoin::INLJoin(Iterator *leftIn, IndexScan *rightIn, const Condition &condition) {

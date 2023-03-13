@@ -51,7 +51,10 @@ namespace PeterDB {
         ~Record();
         bool isNull(int);
         const char* getRecord() const;
-
+        void getData(std::vector<Attribute> &recordDescriptor, char* data);
+        unsigned getSize(){
+            return size - FIELD_NUM_SIZE-INDEX_SIZE*this->fieldNum;
+        }
         RID rid;
         short int  fieldNum;
         short int  size;
@@ -59,6 +62,8 @@ namespace PeterDB {
         void buildRecord(const std::vector<Attribute> &descriptor, const void* data);
         char* flag;
         char* data;
+
+        void getAttribute(std::string attrName, std::vector<Attribute> attrs, char *data);
     };
 
 

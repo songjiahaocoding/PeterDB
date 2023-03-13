@@ -428,7 +428,7 @@ namespace PeterDB {
         std::string indexName = getIndexName(tableName, attributeName);
         IndexManager& indexManager = IndexManager::instance();
         indexManager.destroyFile(indexName);
-
+        
         std::string indexTableName = getIndexTableName(tableName);
         indexManager.destroyFile(indexTableName);
         return 0;
