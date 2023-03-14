@@ -428,7 +428,7 @@ namespace PeterDB {
         this->op = op;
         this->done = false;
         this->count = 0;
-        this->num = 0;
+        this->num = (op==MIN? std::numeric_limits<float>::max() : 0);
     }
 
     Aggregate::Aggregate(Iterator *input, const Attribute &aggAttr, const Attribute &groupAttr, AggregateOp op) {
@@ -538,6 +538,9 @@ namespace PeterDB {
         Attribute attr;
         attr.name = attrName;
         attr.type = this->aggAttr.type;
+        if(this->op==AVG){
+            attr.type = TypeReal;
+        }
         attr.length = this->aggAttr.length;
         attrs.push_back(attr);
         return 0;
