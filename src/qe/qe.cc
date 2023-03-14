@@ -452,6 +452,7 @@ namespace PeterDB {
             this->count++;
             RID rid;
             Record record(attrs, tuple, rid);
+            memset(key, 0, PAGE_SIZE);
             record.getAttribute(this->aggAttr.name, attrs, key);
             char nullIndicator = key[0];
             if(nullIndicator==-128)continue;

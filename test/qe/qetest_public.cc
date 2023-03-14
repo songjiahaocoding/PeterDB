@@ -551,6 +551,7 @@ namespace PeterDBTesting {
         std::stringstream stream;
         ASSERT_EQ(rm.printTuple(attrs, outBuffer, stream), success)
                                     << "RelationManager.printTuple() should succeed.";
+        std::cout<<stream.str()<<std::endl;
         checkPrintRecord("MAX(left.B): 196", stream.str());
         ASSERT_EQ(agg.getNextTuple(outBuffer), QE_EOF) << "Only 1 tuple should be returned for MAX.";
 
