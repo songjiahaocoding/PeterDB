@@ -214,9 +214,10 @@ namespace PeterDB {
         if (rbfm.openFile(tableName, fileHandle) == 0) {
             rbfm.insertRecord(fileHandle, attrs, data, rid);
             insertIndex(tableName, rid);
-            fileHandle.closeFile();
+            rbfm.closeFile(fileHandle);
             return 0;
         }
+        rbfm.closeFile(fileHandle);
         return -1;
     }
 
@@ -663,8 +664,8 @@ namespace PeterDB {
         char* data = new char [INDEX_TUPLE_SIZE];
         memset(data, 0, INDEX_TUPLE_SIZE);
 
-
-        while(iter.getNextRecord(rid, data)!=-1){
+        RID scanRID;
+        while(iter.getNextRecord(scanRID, data)!=-1){
             std::string attrName(data+sizeof(int)+1);
             std::string indexName = getIndexName(tableName, attrName);
             IXFileHandle ixFileHandle;
@@ -683,6 +684,7 @@ namespace PeterDB {
             if(nullId!=-128){
                 indexManager.deleteEntry(ixFileHandle, targetAttr, keyData+1, rid);
             }
+            indexManager.closeFile(ixFileHandle);
             delete [] keyData;
         }
 
