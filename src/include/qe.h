@@ -386,11 +386,16 @@ namespace PeterDB {
 
         Iterator* iter;
         Attribute aggAttr;
+        Attribute groupAttr;
         std::vector<Attribute> attributes;
         int count = 0;
         float num = 0;
         AggregateOp op;
         bool done;
+
+        RC getNext(void *data);
+
+        RC getNextWithGroup(void *data);
     };
 
 

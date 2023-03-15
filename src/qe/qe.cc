@@ -429,15 +429,34 @@ namespace PeterDB {
         this->done = false;
         this->count = 0;
         this->num = (op==MIN? std::numeric_limits<float>::max() : 0);
+        this->groupAttr.length = -1;
     }
 
     Aggregate::Aggregate(Iterator *input, const Attribute &aggAttr, const Attribute &groupAttr, AggregateOp op) {
-
+        this->iter = input;
+        this->aggAttr = aggAttr;
+        this->op = op;
+        this->done = false;
+        this->count = 0;
+        this->num = (op==MIN? std::numeric_limits<float>::max() : 0);
+        this->groupAttr = groupAttr;
     }
 
     Aggregate::~Aggregate() {}
 
     RC Aggregate::getNextTuple(void *data) {
+        if(this->groupAttr.length==-1){
+            return this->getNextWithGroup(data);
+        } else {
+            return this->getNext(data);
+        }
+    }
+
+    RC Aggregate::getNextWithGroup(void* data) {
+
+    }
+
+    RC Aggregate::getNext(void* data){
         if (this->done) return QE_EOF;
 
         char* tuple = new char [PAGE_SIZE];
@@ -447,7 +466,7 @@ namespace PeterDB {
         std::vector<Attribute> attrs;
         iter->getAttributes(attrs);
         memset(tuple, 0, PAGE_SIZE);
-        
+
         while(iter->getNextTuple(tuple) != QE_EOF){
             this->count++;
             RID rid;
