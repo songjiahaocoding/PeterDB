@@ -21,7 +21,7 @@
 ### 3. Filter
 - Describe how your filter works (especially, how you check the condition.)
   - I will retrieve the next tuple first and check if it matches the condition
-  - If not, keep retrieving until there is no more next tuple
+  - If not, keep retrieving until the above satisfies or there is no more next tuple
 
 
 ### 4. Project
@@ -57,7 +57,10 @@
 
 ### 8. Aggregation
 - Describe how your basic aggregation works.
-
+  - For COUNT, I add 1 to the count variable whenever I get a next tuple. Return this value as the final result.  
+  - For MIN and MAX, I keep a variable which represents the max and min value. During the scan, I will update the value.
+  - For SUM, I will use a variable to sum up all the value during the scan
+  - For AVG, I will behave like SUM. Then use the sum variable and the count variable to compute the AVG 
 
 - Describe how your group-based aggregation works. (If you have implemented this feature)
 
