@@ -487,11 +487,10 @@ namespace PeterDB {
                 }
                 case COUNT:
                 {
-                    float cnt = iter->second.first;
                     char* aggVal = new char [sizeof(int)+1];
                     memset(aggVal, 0, sizeof(int)+1);
-                    memcpy(aggVal+1, &cnt, sizeof(int));
-                    Tool::mergeTwoTuple({groupAttr}, val, len, {aggAttr}, aggVal, sizeof(int)+1, data);
+                    memcpy(aggVal+1, &iter->second.first, sizeof(int));
+                    Tool::mergeTwoTuple({groupAttr}, val, len+1, {aggAttr}, aggVal, sizeof(int)+1, data);
                     delete [] val;
                     delete [] aggVal;
                     iter++;
@@ -503,7 +502,7 @@ namespace PeterDB {
                         char* aggVal = new char [sizeof(int)+1];
                         memset(aggVal, 0, sizeof(int)+1);
                         memcpy(aggVal+1, &iter->second.second, sizeof(int));
-                        Tool::mergeTwoTuple({groupAttr}, val, len, {aggAttr}, aggVal, sizeof(int)+1, data);
+                        Tool::mergeTwoTuple({groupAttr}, val, len+1, {aggAttr}, aggVal, sizeof(int)+1, data);
                         delete [] aggVal;
                         delete [] val;
                         iter++;
@@ -513,7 +512,7 @@ namespace PeterDB {
                     char* temp = new char [sizeof(float) + 1];
                     memset(temp, 0, sizeof(float) + 1);
                     memcpy(temp+1, &avg, sizeof(float));
-                    Tool:: mergeTwoTuple({groupAttr}, val, len, {aggAttr}, (char*)temp, sizeof(float)+1, data);
+                    Tool:: mergeTwoTuple({groupAttr}, val, len+1, {aggAttr}, (char*)temp, sizeof(float)+1, data);
                     delete[] temp;
                     delete[] val;
                     iter++;
@@ -582,7 +581,6 @@ namespace PeterDB {
                 else memcpy((char*)data + sizeof(char), &this->num, sizeof(float));
                 break;
             case COUNT:
-                // COUNT returns float as the requirement said
             {
                 float res = this->count;
                 memcpy((char*)data + sizeof(char), &res, sizeof(float));
