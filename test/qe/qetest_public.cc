@@ -3,7 +3,7 @@
 namespace PeterDBTesting {
     TEST_F(QE_Test, cleanup){
 //        tableNames.push_back("right");
-        tableNames.push_back("left");
+        tableNames.push_back("group");
 //        PeterDB::RecordBasedFileManager& rbfm = PeterDB::RecordBasedFileManager::instance();
 //        rbfm.destroyFile("left");
 //        rbfm.destroyFile("leftIndices");
@@ -1469,6 +1469,7 @@ namespace PeterDBTesting {
             std::stringstream stream;
             ASSERT_EQ(rm.printTuple(attrs, outBuffer, stream), success)
                                         << "RelationManager.printTuple() should succeed.";
+            std::cout<<stream.str()<<std::endl;
             printed.emplace_back(stream.str());
             memset(outBuffer, 0, bufSize);
         }

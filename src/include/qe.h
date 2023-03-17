@@ -66,7 +66,7 @@ namespace PeterDB {
         }
 
         ~Key(){
-            delete [] data;
+            //delete [] data;
         }
 
 
@@ -399,6 +399,8 @@ namespace PeterDB {
         RC getNextWithGroup(void *data);
 
         void initGroupBy();
+
+        std::string getAggName();
     };
 
 

@@ -440,6 +440,7 @@ namespace PeterDB {
         this->count = 0;
         this->num = (op==MIN? std::numeric_limits<float>::max() : 0);
         this->groupAttr = groupAttr;
+        this->getAttributes(attributes);
         this->initGroupBy();
     }
 
@@ -454,7 +455,7 @@ namespace PeterDB {
     }
 
     RC Aggregate::getNextWithGroup(void* data) {
-        auto iter = groupMap.begin();
+        static auto iter = groupMap.begin();
         char* val = new char [PAGE_SIZE];
         while(iter!=groupMap.end()){
             memset(val, 0, PAGE_SIZE);
@@ -478,7 +479,7 @@ namespace PeterDB {
                         memcpy(aggVal+1, &intNum, sizeof(int));
                     }
                     else memcpy(aggVal+1, &iter->second.second, sizeof(int));
-                    Tool::mergeTwoTuple({groupAttr}, val, len, {aggAttr}, aggVal, sizeof(int)+1, data);
+                    Tool::mergeTwoTuple({groupAttr}, val, len+1, {aggAttr}, aggVal, sizeof(int)+1, data);
                     delete [] val;
                     delete [] aggVal;
                     iter++;
@@ -603,6 +604,9 @@ namespace PeterDB {
 
     RC Aggregate::getAttributes(std::vector<Attribute> &attrs) const {
         attrs.clear();
+        if(groupAttr.length!=-1){
+            attrs.push_back(groupAttr);
+        }
         std::string name;
         switch(this->op){
             case MIN:
@@ -645,11 +649,11 @@ namespace PeterDB {
             nextRecord.getAttribute(groupAttr.name, attributes, attrData);
             char nullIndicator = attrData[0];
             if (nullIndicator == -128)continue;
-            Key key(attrData + 1, groupAttr.type);
+            Key* key = new Key(attrData + 1, groupAttr.type);
 
-            if (groupMap.find(key) == groupMap.end()) {
+            if (groupMap.find(*key) == groupMap.end()) {
                 float num = (op==MIN? std::numeric_limits<float>::max() : 0);
-                groupMap.insert({key, {0, num}});
+                groupMap.insert({*key, {0, num}});
             }
             int id = 0;
             for(;id<attributes.size();id++){
@@ -658,41 +662,63 @@ namespace PeterDB {
             int intNum = 0;
             float floatNum = 0;
             memset(val, 0, PAGE_SIZE);
-            nextRecord.getAttribute(aggAttr.name, attributes, val);
+            std::string attrName = getAggName();
+            nextRecord.getAttribute(attrName, attributes, val);
             memcpy(&intNum, val+1, sizeof(int));
             memcpy(&floatNum, val+1, sizeof(int));
             nullIndicator = val[0];
             switch(op) {
                 case MIN:
                     if(nullIndicator!=-128){
-                        if(aggAttr.type==TypeInt)groupMap[key].second = std::min(groupMap[key].second, (float)intNum);
-                        else groupMap[key].second = std::min(groupMap[key].second, floatNum);
+                        if(aggAttr.type==TypeInt)groupMap[*key].second = std::min(groupMap[*key].second, (float)intNum);
+                        else groupMap[*key].second = std::min(groupMap[*key].second, floatNum);
                     }
                     break;
                 case MAX:
                     if(nullIndicator!=-128){
-                        if(aggAttr.type==TypeInt)groupMap[key].second = std::max(groupMap[key].second, (float)intNum);
-                        else groupMap[key].second = std::max(groupMap[key].second, floatNum);
+                        if(aggAttr.type==TypeInt)groupMap[*key].second = std::max(groupMap[*key].second, (float)intNum);
+                        else groupMap[*key].second = std::max(groupMap[*key].second, floatNum);
                     }
                     break;
                 case COUNT:
                     if(nullIndicator!=-128){
-                        groupMap[key].first++;
+                        groupMap[*key].first++;
                     }
                     break;
                 case SUM:
                 case AVG:
                     if(nullIndicator!=-128){
-                        if(aggAttr.type==TypeInt)groupMap[key].second+=intNum;
-                        else groupMap[key].second+=floatNum;
-                        groupMap[key].first++;
+                        if(aggAttr.type==TypeInt)groupMap[*key].second+=intNum;
+                        else groupMap[*key].second+=floatNum;
+                        groupMap[*key].first++;
                     }
                     break;
             }
         }
-
         delete [] attrData;
         delete [] tuple;
         delete [] val;
+    }
+
+    std::string Aggregate::getAggName() {
+        std::string name;
+        switch(this->op){
+            case MIN:
+                name = "MIN";
+                break;
+            case MAX:
+                name = "MAX";
+                break;
+            case COUNT:
+                name = "COUNT";
+                break;
+            case SUM:
+                name = "SUM";
+                break;
+            case AVG:
+                name = "AVG";
+                break;
+        }
+        return name+"("+aggAttr.name+")";
     }
 } // namespace PeterDB
