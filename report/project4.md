@@ -53,6 +53,7 @@
 ### 7. Grace Hash Join (If you have implemented this feature)
 - Describe how your grace hash join works (especially, in-memory structure).
 
+  No
 
 
 ### 8. Aggregation
@@ -63,7 +64,11 @@
   - For AVG, I will behave like SUM. Then use the sum variable and the count variable to compute the AVG 
 
 - Describe how your group-based aggregation works. (If you have implemented this feature)
-
+  - I used a `map<Key, pair<int, float>>` to keep track of the information of each distinct groupby attribute
+    - The pair.first represents the count of all tuples which share the same key
+    - The pari.second is the intermediate variable used to calculate the final result
+  - First, I will scan the whole table to update the map just like what I did previously
+  - Then, On calling getNextTuple I will use the information in the map to calculate the value for each distinct attribute
 
 
 ### 9. Implementation Detail
