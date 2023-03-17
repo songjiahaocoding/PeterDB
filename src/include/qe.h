@@ -388,6 +388,7 @@ namespace PeterDB {
         Attribute aggAttr;
         Attribute groupAttr;
         std::vector<Attribute> attributes;
+        std::map<Key, std::pair<int, float>> groupMap;
         int count = 0;
         float num = 0;
         AggregateOp op;
@@ -396,6 +397,8 @@ namespace PeterDB {
         RC getNext(void *data);
 
         RC getNextWithGroup(void *data);
+
+        void initGroupBy();
     };
 
 

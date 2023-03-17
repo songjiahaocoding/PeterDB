@@ -440,20 +440,88 @@ namespace PeterDB {
         this->count = 0;
         this->num = (op==MIN? std::numeric_limits<float>::max() : 0);
         this->groupAttr = groupAttr;
+        this->initGroupBy();
     }
 
     Aggregate::~Aggregate() {}
 
     RC Aggregate::getNextTuple(void *data) {
         if(this->groupAttr.length==-1){
-            return this->getNextWithGroup(data);
-        } else {
             return this->getNext(data);
+        } else {
+            return this->getNextWithGroup(data);
         }
     }
 
     RC Aggregate::getNextWithGroup(void* data) {
+        auto iter = groupMap.begin();
+        char* val = new char [PAGE_SIZE];
+        while(iter!=groupMap.end()){
+            memset(val, 0, PAGE_SIZE);
+            int len = sizeof(int);
+            if(groupAttr.type==TypeVarChar){
+                memcpy(&len, iter->first.data, sizeof(int));
+                len+=sizeof(int);
+            }
+            memcpy(val+1, iter->first.data, len);
 
+            switch (op) {
+                case SUM:
+                case MIN:
+                case MAX:
+                {
+
+                    char* aggVal = new char [sizeof(int)+1];
+                    memset(aggVal, 0, sizeof(int)+1);
+                    if(aggAttr.type==TypeInt){
+                        int intNum = iter->second.second;
+                        memcpy(aggVal+1, &intNum, sizeof(int));
+                    }
+                    else memcpy(aggVal+1, &iter->second.second, sizeof(int));
+                    Tool::mergeTwoTuple({groupAttr}, val, len, {aggAttr}, aggVal, sizeof(int)+1, data);
+                    delete [] val;
+                    delete [] aggVal;
+                    iter++;
+                    return 0;
+                }
+                case COUNT:
+                {
+                    float cnt = iter->second.first;
+                    char* aggVal = new char [sizeof(int)+1];
+                    memset(aggVal, 0, sizeof(int)+1);
+                    memcpy(aggVal+1, &cnt, sizeof(int));
+                    Tool::mergeTwoTuple({groupAttr}, val, len, {aggAttr}, aggVal, sizeof(int)+1, data);
+                    delete [] val;
+                    delete [] aggVal;
+                    iter++;
+                    return 0;
+                }
+                case AVG:
+                {
+                    if(iter->second.first==0){
+                        char* aggVal = new char [sizeof(int)+1];
+                        memset(aggVal, 0, sizeof(int)+1);
+                        memcpy(aggVal+1, &iter->second.second, sizeof(int));
+                        Tool::mergeTwoTuple({groupAttr}, val, len, {aggAttr}, aggVal, sizeof(int)+1, data);
+                        delete [] aggVal;
+                        delete [] val;
+                        iter++;
+                        return 0;
+                    }
+                    float avg = iter->second.second / iter->second.first;
+                    char* temp = new char [sizeof(float) + 1];
+                    memset(temp, 0, sizeof(float) + 1);
+                    memcpy(temp+1, &avg, sizeof(float));
+                    Tool:: mergeTwoTuple({groupAttr}, val, len, {aggAttr}, (char*)temp, sizeof(float)+1, data);
+                    delete[] temp;
+                    delete[] val;
+                    iter++;
+                    return 0;
+                }
+            }
+        }
+        delete [] val;
+        return -1;
     }
 
     RC Aggregate::getNext(void* data){
@@ -563,5 +631,68 @@ namespace PeterDB {
         attr.length = this->aggAttr.length;
         attrs.push_back(attr);
         return 0;
+    }
+
+    void Aggregate::initGroupBy() {
+        char* attrData = new char [PAGE_SIZE];
+        char* tuple = new char [PAGE_SIZE];
+        char* val = new char [PAGE_SIZE];
+        memset(tuple, 0, PAGE_SIZE);
+        while(iter->getNextTuple(tuple) != QE_EOF) {
+            memset(attrData, 0, PAGE_SIZE);
+            RID rid;
+            Record nextRecord(attributes, tuple, rid);
+            nextRecord.getAttribute(groupAttr.name, attributes, attrData);
+            char nullIndicator = attrData[0];
+            if (nullIndicator == -128)continue;
+            Key key(attrData + 1, groupAttr.type);
+
+            if (groupMap.find(key) == groupMap.end()) {
+                float num = (op==MIN? std::numeric_limits<float>::max() : 0);
+                groupMap.insert({key, {0, num}});
+            }
+            int id = 0;
+            for(;id<attributes.size();id++){
+                if(attributes[id].name==groupAttr.name)break;
+            }
+            int intNum = 0;
+            float floatNum = 0;
+            memset(val, 0, PAGE_SIZE);
+            nextRecord.getAttribute(aggAttr.name, attributes, val);
+            memcpy(&intNum, val+1, sizeof(int));
+            memcpy(&floatNum, val+1, sizeof(int));
+            nullIndicator = val[0];
+            switch(op) {
+                case MIN:
+                    if(nullIndicator!=-128){
+                        if(aggAttr.type==TypeInt)groupMap[key].second = std::min(groupMap[key].second, (float)intNum);
+                        else groupMap[key].second = std::min(groupMap[key].second, floatNum);
+                    }
+                    break;
+                case MAX:
+                    if(nullIndicator!=-128){
+                        if(aggAttr.type==TypeInt)groupMap[key].second = std::max(groupMap[key].second, (float)intNum);
+                        else groupMap[key].second = std::max(groupMap[key].second, floatNum);
+                    }
+                    break;
+                case COUNT:
+                    if(nullIndicator!=-128){
+                        groupMap[key].first++;
+                    }
+                    break;
+                case SUM:
+                case AVG:
+                    if(nullIndicator!=-128){
+                        if(aggAttr.type==TypeInt)groupMap[key].second+=intNum;
+                        else groupMap[key].second+=floatNum;
+                        groupMap[key].first++;
+                    }
+                    break;
+            }
+        }
+
+        delete [] attrData;
+        delete [] tuple;
+        delete [] val;
     }
 } // namespace PeterDB
