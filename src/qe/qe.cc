@@ -150,8 +150,7 @@ namespace PeterDB {
     RC Project::getNextTuple(void *data) {
         char* tuple = new char [PAGE_SIZE];
         memset(tuple, 0, PAGE_SIZE);
-        auto rc = iter->getNextTuple(tuple);
-        if(rc==-1){
+        if(iter->getNextTuple(tuple)==-1){
             delete [] tuple;
             return -1;
         }
@@ -312,6 +311,7 @@ namespace PeterDB {
                 }
                 delete [] attrData;
             }
+
             this->map.clear();
             this->mapSize = 0;
             this->rightIter->setIterator();
@@ -320,7 +320,6 @@ namespace PeterDB {
 
     RC BNLJoin::getAttributes(std::vector<Attribute> &attrs) const {
         attrs.clear();
-
         for(auto &attr : this->leftAttrs) {
             attrs.push_back(attr);
         }
@@ -371,16 +370,7 @@ namespace PeterDB {
             Record left(leftAttrs, leftData, rid);
             left.getAttribute(condition.lhsAttr, leftAttrs, leftAttrData);
 
-            //  return value of getAttribute contains nullIndicator
-            //  , but underlying key constructor does not expect nullIndicator
-            char nullIndicator = leftAttrData[0];
-            if(nullIndicator==-128) {
-                rightIter->setIterator(leftAttrData + 1, leftAttrData + 1, true, true);
-            }
-            else {
-                rightIter->setIterator(leftAttrData+1, leftAttrData+1, true, true);
-            }
-
+            rightIter->setIterator(leftAttrData + 1, leftAttrData + 1, true, true);
             delete[] leftAttrData;
         }while(rightIter->getNextTuple(rightData) == QE_EOF);
 
@@ -395,7 +385,6 @@ namespace PeterDB {
 
     RC INLJoin::getAttributes(std::vector<Attribute> &attrs) const {
         attrs.clear();
-
         for(auto attr:leftAttrs) {
             attrs.push_back(attr);
         }
