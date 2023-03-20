@@ -134,7 +134,6 @@ namespace PeterDB {
                 std::cout<<"Error with the attribute type"<< std::endl;
                 return false;
         }
-        return false;
     }
 
     Project::Project(Iterator *input, const std::vector<std::string> &attrNames) {
