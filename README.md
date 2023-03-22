@@ -8,6 +8,7 @@
  - QueryEngine
 
  The structure of the whole system is as follows:
+
  ![system architecture](report/pics/database.png) 
  
 ### If you are not using CLion and want to use the command line `cmake` tool:
