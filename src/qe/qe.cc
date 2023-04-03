@@ -163,6 +163,7 @@ namespace PeterDB {
         char* nameNullBytes = new char [namePivot];
         memset(nameNullBytes, 0, namePivot);
         memcpy(nameNullBytes, tuple, namePivot);
+        // Find not-null attribute and its position in a record
         for (int i = 0; i < attrs.size(); ++i) {
             auto it = std::find(attrNames.begin(), attrNames.end(), attrs[i].name);
             int dis = std::distance(attrNames.begin(), it);
@@ -184,6 +185,7 @@ namespace PeterDB {
             pivot += len;
         }
 
+        // Build the returned data using the information previously found.
         for(int i=0;i<attrNames.size();i++){
             auto item = proAttrs[i];
             int len = sizeof(int);
@@ -192,9 +194,9 @@ namespace PeterDB {
                 len+=sizeof(int);
             }
             memcpy((char*)data+namePivot, tuple+item.pos, len);
-            namePivot+=len;
+            namePivot += len;
         }
-
+        // Copy the null indicator to the data
         memcpy(data, nameNullBytes, std::ceil( static_cast<double>(attrNames.size()) /CHAR_BIT));
         delete [] proAttrs;
         delete [] tuple;
@@ -237,10 +239,12 @@ namespace PeterDB {
         delete [] this->rightData;
     }
 
+    // Use tupleBuffer to store the pairs of records
+    // a map as the block buffer to find the matching pairs
     RC BNLJoin::getNextTuple(void *data) {
         RecordBasedFileManager& rbfm = RecordBasedFileManager::instance();
         while(true) {
-            if(tupleBuffer.size() != 0) {
+            if(!tupleBuffer.empty()) {
                 auto pair = tupleBuffer.back();
                 char* tuple1 = new char [pair.first.getSize()];
                 char* tuple2 = new char [pair.second.getSize()];
@@ -337,7 +341,7 @@ namespace PeterDB {
 
         this->leftIter->getAttributes(this->leftAttrs);
         this->rightIter->getAttributes(this->rightAttrs);
-
+        // Avoid duplicate allocation and deallocation
         this->leftData = new char [PAGE_SIZE];
         this->rightData = new char [PAGE_SIZE];
     }

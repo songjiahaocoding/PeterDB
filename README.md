@@ -1,6 +1,7 @@
 # PeterDB
 
 ### Components:
+ - FileManager
  - PagedFileManager
  - RecordBasedFileManager
  - RelationManager

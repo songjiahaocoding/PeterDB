@@ -83,7 +83,7 @@ namespace PeterDB {
             Tool::writeInfo(data, info);
             Leaf::insertEntry(data, attribute, entry, const_cast<RID &>(rid));
             ixFileHandle.appendPage(data);
-            ixFileHandle.setRoot(1);
+            ixFileHandle.setRoot(1);           // The root is initially page 1
             delete [] data;
             delete [] info;
         } else {
